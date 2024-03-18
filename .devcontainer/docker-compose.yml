@@ -8,7 +8,7 @@ services:
         ports:
             - "7474:7474"
             - "7687:7687"
-    example:
+    service:
         build:
             context: ..
             dockerfile: .devcontainer/Dockerfile

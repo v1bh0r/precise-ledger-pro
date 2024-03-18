@@ -3,7 +3,7 @@
   "dockerComposeFile": "docker-compose.yml",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
-  "service": "example",
+  "service": "service",
   "appPort": 8080,
   "extensions": [
     "vscjava.vscode-java-pack",
@@ -14,5 +14,5 @@
   ],
   "settings":{
     "java.home": "/docker-java-home"
-  }
+  },
 }
