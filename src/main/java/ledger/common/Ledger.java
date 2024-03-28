@@ -18,6 +18,9 @@ public class Ledger implements Cloneable {
     @Getter
     private Balance startBalance;
     private List<LedgerEntry> entries;
+    @Getter
+    private String currency;
+
     public void addEntry(LedgerEntry entry) {
         entries.add(entry);
     }
@@ -29,26 +32,29 @@ public class Ledger implements Cloneable {
     // Test that the new ledger is a deep clone of the original ledger
     public Ledger rollbackTo(LocalDateTime effectiveAt) {
         // Get entries subset that are effective before the given effectiveAt
-        var newEntries = entries.stream()
-                .filter(entry -> !entry.effectiveAt().isAfter(effectiveAt)).toList();
-        return new Ledger(loanId, startBalance, newEntries);
+        var newEntries = entries.stream().filter(entry -> !entry.effectiveAt().isAfter(effectiveAt)).toList();
+        return new Ledger(loanId, startBalance, newEntries, currency);
     }
 
     // Test that the new ledger is a deep clone of the original ledger
     public Ledger rollbackTo(String sourceLedgerActivityType, String sourceLedgerActivityId) {
         var newEntries = new AtomicReference<List<LedgerEntry>>();
-        IntStream.range(0, entries.size())
-                .filter(i -> entries.get(i).sourceLedgerActivityType().equals(sourceLedgerActivityType) &&
-                        entries.get(i).sourceLedgerActivityId().equals(sourceLedgerActivityId))
-                .findFirst()
-                .ifPresent(i -> newEntries.set(List.copyOf(entries.subList(0, i + 1))));
+        IntStream.range(0, entries.size()).filter(i -> entries.get(i).sourceLedgerActivityType().equals(sourceLedgerActivityType) && entries.get(i).sourceLedgerActivityId().equals(sourceLedgerActivityId)).findFirst().ifPresent(i -> newEntries.set(List.copyOf(entries.subList(0, i + 1))));
 
-        return new Ledger(loanId, startBalance, newEntries.get());
+        return new Ledger(loanId, startBalance, newEntries.get(), currency);
     }
 
     @Override
     public Ledger clone() throws CloneNotSupportedException {
         super.clone();
-        return new Ledger(loanId, startBalance, new ArrayList<>(entries));
+        return new Ledger(loanId, startBalance, new ArrayList<>(entries), currency);
+    }
+
+    public Balance getCurrentBalance() {
+        if (entries.isEmpty()) {
+            return startBalance;
+        } else {
+            return entries.getLast().getBalance();
+        }
     }
 }

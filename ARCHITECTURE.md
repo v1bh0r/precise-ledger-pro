@@ -2,79 +2,91 @@
 
 ```plantuml
 @startuml
-class Balance {
-  - principal: Double
-  - interest: Double
-  - fee: Double
-  - excess: Double
-}
 
-class "Ledger" as ledger {
-  - startingBalance: Balance 
-  - startingDate: LocalDate
-  - entries: List<LedgerEntry>
-  + addEntry(ledgerEntry: LedgerEntry): void
-  + getBalance(): number
-  + getEntries(): LedgerEntry[]
-  + rollbackTo(effectiveAt: LocalDateTime): Ledger
-  + rollbackForActivityReversal(activityType: String, activityId: String): Ledger
+!theme plain
+top to bottom direction
+skinparam linetype polyline
+
+entity Balance << record >> {
+  + principal(): MonetaryAmount
+  + add(Balance): Balance
+  + excess(): MonetaryAmount
+  + subtract(Balance): Balance
+  + get(BalanceComponent): MonetaryAmount
+  + fees(): MonetaryAmount
+  + interest(): MonetaryAmount
+}
+enum BalanceComponent << enumeration >> {
+  + valueOf(String): BalanceComponent
+  + values(): BalanceComponent[]
+}
+class ComputationalSpread {
+  + applyTo(Balance): Balance
+}
+enum Direction << enumeration >> {
+  + values(): Direction[]
+  + valueOf(String): Direction
+}
+class Ledger {
+  + getLoanId(): String
+  + getStartBalance(): Balance
+  + rollbackTo(String, String): Ledger
   + clone(): Ledger
+  + addEntry(LedgerEntry): void
+  + getEntries(): List<LedgerEntry>
+  + rollbackTo(LocalDateTime): Ledger
+}
+class LedgerActivity {
+  + applyTo(Ledger): void
+}
+entity LedgerEntry << record >> {
+  + feeBalance(): MonetaryAmount
+  + principalBalance(): MonetaryAmount
+  + eventId(): String
+  + excess(): MonetaryAmount
+  + interest(): MonetaryAmount
+  + sourceLedgerActivityId(): String
+  + amount(): MonetaryAmount
+  + effectiveAt(): LocalDateTime
+  + fee(): MonetaryAmount
+  + principal(): MonetaryAmount
+  + excessBalance(): MonetaryAmount
+  + loanId(): String
+  + sourceLedgerActivityType(): String
+  + createdAt(): LocalDateTime
+  + interestBalance(): MonetaryAmount
+  + eventType(): String
+}
+class LedgerService {
+  ~ syncWithRetroactiveLedger(Ledger, Ledger): void
+  ~ calculateTotalImpact(LedgerActivity): Balance
+  ~ applyLedgerActivities(Ledger, List<LedgerActivity>): void
+}
+class StartOfDay {
+  + applyTo(Ledger): void
+}
+class StaticAllocationTransaction {
+  + applyTo(Ledger): void
+}
+class StaticSpread {
+  + applyTo(Balance): Balance
+}
+class TemporalActivity
+class Transaction {
+  + applyTo(Ledger): void
+}
+class TransactionSpreadStrategy {
+  + applyTo(Balance): Balance
 }
 
-class "LedgerService" as ledgerService {
-  + syncWithRetroactiveLedger(primaryLedger: Ledger, retroactiveLedger: Ledger): void
-  + applyLedgerActivities(ledger: Ledger, activities: LedgerActivity[]): Ledger
-  + calculateTotalImpact(activity: ledgerActivity): Balance
-}
-
-note left of ledger::startingBalance
-  The starting balance of the ledger
-end note
-
-note left of ledger::startingDate
-  We cannot make back dated entries
-  before this date
-end note
-
-note right of ledger::rollbackTo
-  Returns a new ledger (clone) with all entries
-  before the effectiveAt date
-  removed
-end note
-
-note right of ledgerService::syncWithRetroactiveLedger
-  Reconciles the ledger with another ledger containing
-  historical transactions. It does this by adding 
-  the entries from the retroactiveLedger to this ledger.
-  It makes adjustments for any differences in the 
-  entries between the two ledgers grouped by the source
-  event type and ID.
-end note
-
-class "LedgerEntry" as ledgerEntry {
-    - eventId: String
-    - eventType: String
-    - amount: Double
-    - principal: Double
-    - interest: Double
-    - excess: Double
-    - fee: Double
-    - principalBalance: Double
-    - interestBalance: Double
-    - feeBalance: Double
-    - excessBalance: Double
-    - effectiveAt: LocalDateTime
-    - createdAt: LocalDateTime
-    - sourceLedgerActivityType: String
-    - sourceLedgerActivityId: String
-}
-
-ledger --* ledgerEntry
-
-interface "LedgerActivity" as ledgerActivity {
-    + applyTo(ledger: Ledger): void
-}
+ComputationalSpread          -[#000082,plain]-^  TransactionSpreadStrategy   
+StartOfDay                   -[#000082,plain]-^  TemporalActivity            
+StaticAllocationTransaction  -[#000082,plain]-^  LedgerActivity              
+StaticSpread                 -[#000082,plain]-^  TransactionSpreadStrategy   
+TemporalActivity             -[#000082,plain]-^  LedgerActivity              
+Transaction                  -[#000082,plain]-^  LedgerActivity              
 @enduml
+
 ```
 
 ### Core Algorithm

@@ -1,0 +1,43 @@
+package ledger.common.ledgeractivity.temporalactivity;
+
+import lombok.AllArgsConstructor;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@AllArgsConstructor
+public class TemporalActivityContext {
+    private final Map<String, Object> properties = new HashMap<>();
+
+    public void setProperty(String key, Object value) {
+        properties.put(key, value);
+    }
+
+    public <T> T getProperty(String key, Class<T> type) {
+        var obj = properties.get(key);
+        if (obj == null) {
+            throw new NullPointerException("Property " + key + " is null");
+        }
+        return type.cast(obj);
+    }
+
+    public <T> List<T> getListProperty(String key, Class<T> type) {
+        Object obj = properties.get(key);
+        if (obj == null) {
+            throw new NullPointerException("Property " + key + " is null");
+        }
+        if (obj instanceof List<?> list) {
+            try {
+                return list.stream()
+                        .map(type::cast)
+                        .collect(Collectors.toList());
+            } catch (ClassCastException e) {
+                throw new ClassCastException("Not all elements in the list are of type " + type.getName());
+            }
+        } else {
+            throw new ClassCastException("Property " + key + " is not a List");
+        }
+    }
+}

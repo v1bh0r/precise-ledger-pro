@@ -1,11 +1,13 @@
 package ledger.service;
 
-import ledger.model.Balance;
+import jakarta.enterprise.context.ApplicationScoped;
 import ledger.common.Ledger;
 import ledger.common.LedgerActivity;
+import ledger.model.Balance;
 
 import java.util.List;
 
+@ApplicationScoped
 public class LedgerService {
     /**
      * Reconciles the ledger with another ledger containing
@@ -15,7 +17,7 @@ public class LedgerService {
      * entries between the two ledgers grouped by the source
      * event type and ID.
      *
-     * @param primaryLedger The ledger from which a retroactive ledger was forked from
+     * @param primaryLedger     The ledger from which a retroactive ledger was forked from
      * @param retroactiveLedger The ledger having historical transactions that need to be reconciled
      */
     void syncWithRetroactiveLedger(Ledger primaryLedger, Ledger retroactiveLedger) {
