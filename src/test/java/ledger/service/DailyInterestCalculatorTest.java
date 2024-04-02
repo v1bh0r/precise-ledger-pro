@@ -16,8 +16,8 @@ class DailyInterestCalculatorTest {
 
     @Test
     void calculateInterest() {
-        assertEquals(MonetaryUtil.createMonetaryAmount(0.27),
-                dailyInterestCalculator.calculateInterest(MonetaryUtil.createMonetaryAmount(1000), .10f, 365)
+        assertEquals(MonetaryUtil.monetaryAmount(0.27),
+                dailyInterestCalculator.calculateInterest(MonetaryUtil.monetaryAmount(1000), .10f, 365)
                         .with(Monetary.getDefaultRounding()));
     }
 }

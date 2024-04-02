@@ -10,11 +10,11 @@ public class MonetaryUtil {
     private static final MonetaryAmountFactory<Money> monetaryAmountFactory = new MonetaryProducer().produceMonetaryAmountFactory();
     private static final String DEFAULT_CURRENCY_CODE = "USD";
 
-    public static MonetaryAmount createMonetaryAmount(double amount, String currencyCode) {
+    public static MonetaryAmount monetaryAmount(double amount, String currencyCode) {
         return monetaryAmountFactory.setCurrency(currencyCode).setNumber(amount).create();
     }
 
-    public static MonetaryAmount createMonetaryAmount(double amount) {
-        return createMonetaryAmount(amount, DEFAULT_CURRENCY_CODE);
+    public static MonetaryAmount monetaryAmount(double amount) {
+        return monetaryAmount(amount, DEFAULT_CURRENCY_CODE);
     }
 }

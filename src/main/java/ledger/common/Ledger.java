@@ -4,6 +4,7 @@ import ledger.model.Balance;
 import ledger.model.LedgerEntry;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.jboss.logging.Logger;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -56,5 +57,10 @@ public class Ledger implements Cloneable {
         } else {
             return entries.getLast().getBalance();
         }
+    }
+
+    public void log(Logger log) {
+        log.info("Ledger for loanId: " + loanId);
+        entries.forEach(entry -> log.info(entry.toString()));
     }
 }

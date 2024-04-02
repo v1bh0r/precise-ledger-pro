@@ -48,7 +48,7 @@ public class DailyInterestCalculationCommand implements TemporalActivityCommand 
                 Money.zero(Monetary.getCurrency(currencyCode)),
                 loanBalance.principal(),
                 loanBalance.interest().add(interest),
-                loanBalance.fees(),
+                loanBalance.fee(),
                 loanBalance.excess(),
                 effectiveAt,
                 LocalDateTime.now(),

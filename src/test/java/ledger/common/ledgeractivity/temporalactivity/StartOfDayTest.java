@@ -10,11 +10,13 @@ import ledger.service.BalanceService;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 
+import javax.money.Monetary;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static ledger.util.MonetaryUtil.monetaryAmount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @QuarkusTest
@@ -37,7 +39,7 @@ class StartOfDayTest {
 
     @Test
     void applyTo() {
-        var ledger = createLedger(balanceService.createBalance(10000, 0, 0, 0, CURRENCY));
+        var ledger = createLedger(balanceService.createBalance(10000, 100, 10, 0, CURRENCY));
         var temporalContext = new TemporalActivityContext();
 
         var interestRate = new InterestRate();
@@ -54,5 +56,11 @@ class StartOfDayTest {
         // Expect an entry to be added to the ledger having interest accrual at the start of the day
         var entries = ledger.getEntries();
         assertEquals(1, entries.size());
+        var entry = entries.getFirst();
+        var balance = entry.getBalance();
+        assertEquals(monetaryAmount(10000), balance.principal());
+        assertEquals(monetaryAmount(102.74), balance.interest().with(Monetary.getDefaultRounding()));
+
+        ledger.log(log);
     }
 }

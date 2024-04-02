@@ -16,7 +16,7 @@ public class StartOfDay extends TemporalActivity {
     private final List<String> temporalActivityCommands = new ArrayList<>();
 
     public StartOfDay(@NonNull String loanId, @NonNull LocalDateTime sodDateTime, TemporalActivityContext sodContext) {
-        super(loanId, ACTIVITY_TYPE, getID(sodDateTime));
+        super(loanId, ACTIVITY_TYPE, getID(sodDateTime), sodDateTime, LocalDateTime.now());
         this.sodDateTime = sodDateTime;
         this.sodContext = sodContext == null ? new TemporalActivityContext() : sodContext;
         temporalActivityCommands.add(DailyInterestCalculationCommand.class.getSimpleName());
