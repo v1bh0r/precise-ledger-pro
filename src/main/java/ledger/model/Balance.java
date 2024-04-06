@@ -3,8 +3,6 @@ package ledger.model;
 import javax.money.MonetaryAmount;
 
 public record Balance(MonetaryAmount principal, MonetaryAmount interest, MonetaryAmount fee, MonetaryAmount excess) {
-
-
     public MonetaryAmount get(BalanceComponent component) {
         return switch (component) {
             case PRINCIPAL -> principal;
@@ -23,6 +21,11 @@ public record Balance(MonetaryAmount principal, MonetaryAmount interest, Monetar
     public Balance subtract(Balance balance) {
         return new Balance(this.principal().subtract(balance.principal()), this.interest().subtract(balance.interest()),
                 this.fee().subtract(balance.fee()), this.excess().subtract(balance.excess()));
+    }
+
+    public boolean equals(Balance balance) {
+        return this.principal.equals(balance.principal()) && this.interest.equals(balance.interest())
+                && this.fee.equals(balance.fee()) && this.excess.equals(balance.excess());
     }
 
     public MonetaryAmount getTotalAmount() {

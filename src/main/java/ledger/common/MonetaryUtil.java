@@ -1,4 +1,4 @@
-package ledger.util;
+package ledger.common;
 
 import ledger.producer.MonetaryProducer;
 import org.javamoney.moneta.Money;
@@ -16,5 +16,9 @@ public class MonetaryUtil {
 
     public static MonetaryAmount monetaryAmount(double amount) {
         return monetaryAmount(amount, DEFAULT_CURRENCY_CODE);
+    }
+
+    public static MonetaryAmount zero() {
+        return monetaryAmount(0);
     }
 }

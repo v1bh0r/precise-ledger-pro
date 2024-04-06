@@ -28,7 +28,7 @@ public class StaticAllocationTransaction extends Transaction {
         var difference = newBalance.subtract(currentBalance);
         ledger.addEntry(LedgerEntry.builder()
                 .loanId(super.getLoanId())
-                .eventType(super.getActivityType())
+                .entryType(super.getActivityType())
                 .amount(customSpreadOverride.getTotalAmount())
                 .principal(difference.principal())
                 .interest(difference.interest())

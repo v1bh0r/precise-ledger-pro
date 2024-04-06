@@ -42,7 +42,7 @@ class LedgerActivity {
 entity LedgerEntry << record >> {
   + feeBalance(): MonetaryAmount
   + principalBalance(): MonetaryAmount
-  + eventId(): String
+  + entryId(): String
   + excess(): MonetaryAmount
   + interest(): MonetaryAmount
   + sourceLedgerActivityId(): String
@@ -55,7 +55,7 @@ entity LedgerEntry << record >> {
   + sourceLedgerActivityType(): String
   + createdAt(): LocalDateTime
   + interestBalance(): MonetaryAmount
-  + eventType(): String
+  + entryType(): String
 }
 class LedgerService {
   ~ syncWithRetroactiveLedger(Ledger, Ledger): void
@@ -89,7 +89,9 @@ Transaction                  -[#000082,plain]-^  LedgerActivity
 
 ```
 
-### Core Algorithm
+### Core Algorithms
+
+#### Ledger Activity Application
 
 ```plantuml
 @startuml
@@ -124,5 +126,22 @@ repeat
       endif
 repeat while (There are un-applied ledger activities)
 stop
+@enduml
+```
+
+#### Sync With Retroactive Ledger
+
+```plantuml
+@startuml
+start
+:index = Locate the index at which the two ledgers diverge;
+:retroactiveEntriesIndex = index;
+repeat
+  :retroEntry = entry at retroactiveEntriesIndex;
+  :Get total impact of source activity of the retroEntry and compare with the total impact of the same source activity on the primaryLedger;
+  :If the total balance is not 0 then add an adjustment to primary ledger in the context of the source activity;
+  :retroactiveEntriesIndex++;
+repeat while (retroactiveEntriesIndex < number retroactive entries)
+end
 @enduml
 ```
