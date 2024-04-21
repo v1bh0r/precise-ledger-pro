@@ -5,11 +5,11 @@ import ledger.common.Ledger;
 import ledger.common.LedgerActivity;
 import ledger.model.Balance;
 import ledger.model.LedgerEntry;
+import lombok.NonNull;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 @ApplicationScoped
 public class LedgerService {
@@ -83,15 +83,18 @@ public class LedgerService {
     }
 
     Balance calculateTotalImpact(Ledger ledger, String activityType, String activityId) {
-        // Sum up the balances of all entries with the same source activity type and ID
-        var entries = ledger.getEntries();
-        AtomicReference<Balance> totalImpact = new AtomicReference<>(BalanceService.createZeroBalance(ledger.getCurrency()));
-        entries.stream()
-                .filter(entry -> entry.getSourceLedgerActivityType().equals(activityType) && entry.getSourceLedgerActivityId().equals(activityId))
-                .forEach(entry -> {
-                    totalImpact.set(totalImpact.get().add(entry.getBalanceChange()));
-                });
-        return totalImpact.get();
+        return ledger.calculateTotalImpact(activityType, activityId);
+    }
+
+    /**
+     * 1. Rollback the ledger to before the reversed activity as a retroactive ledger
+     * 2. Re-apply all the ledger activities that came after the reversed activity
+     * to the retroactive ledger
+     * 3. Add a compensation ledger entry as a reversal entry to the original ledger
+     * 4. Sync the retroactive ledger back into the original ledger
+     */
+    public void reverseLedgerActivity(@NonNull String ledgerActivityType, @NonNull String ledgerActivityId, @NonNull Ledger ledger) {
+        // TODO: Implement this method
     }
 
     private String getActivityKey(String activityType, String activityId) {
@@ -99,7 +102,7 @@ public class LedgerService {
     }
 
     // TODO: We need a better way to generate IDs in order to make it thread-safe and dist prog compatible
-    private int getNextId(List<LedgerEntry> entries) {
+    public static int getNextId(List<LedgerEntry> entries) {
         // Find the greatest ID in the list and increment it by 1
         return entries.stream()
                 .map(LedgerEntry::getEntryId)

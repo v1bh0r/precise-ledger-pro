@@ -3,17 +3,19 @@ package ledger.common.ledgeractivity.transactionactivity.transactionspreadstrate
 import ledger.common.TransactionSpreadStrategy;
 import ledger.model.Balance;
 import ledger.model.Direction;
-import lombok.AllArgsConstructor;
 
-@AllArgsConstructor
 public class StaticSpread extends TransactionSpreadStrategy {
     Balance amountAllocation;
-    Direction direction;
+
+    public StaticSpread(Balance amountAllocation, Direction direction) {
+        super(direction);
+        this.amountAllocation = amountAllocation;
+    }
 
     @Override
     public Balance applyTo(Balance balance) {
         Balance newBalance;
-        if (direction == Direction.CREDIT) {
+        if (this.getDirection() == Direction.CREDIT) {
             newBalance = balance.add(amountAllocation);
         } else {
             newBalance = balance.subtract(amountAllocation);

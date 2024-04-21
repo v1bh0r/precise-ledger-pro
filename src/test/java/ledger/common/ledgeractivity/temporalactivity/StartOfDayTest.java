@@ -51,7 +51,7 @@ class StartOfDayTest {
         temporalContext.setProperty("daysInYear", 365);
         temporalContext.setProperty("currencyCode", CURRENCY);
 
-        var sod = new StartOfDay(LOAN_ID, LocalDate.now().atStartOfDay().plusHours(5), temporalContext);
+        var sod = new StartOfDay(LOAN_ID, "SOD", LocalDate.now().atStartOfDay().plusHours(5), temporalContext);
         sod.applyTo(ledger);
         // Expect an entry to be added to the ledger having interest accrual at the start of the day
         var entries = ledger.getEntries();
@@ -60,7 +60,5 @@ class StartOfDayTest {
         var balance = entry.getBalance();
         assertEquals(monetaryAmount(10000), balance.principal());
         assertEquals(monetaryAmount(102.74), balance.interest().with(Monetary.getDefaultRounding()));
-
-        ledger.log(log);
     }
 }

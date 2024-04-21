@@ -6,7 +6,7 @@ import lombok.NonNull;
 import java.time.LocalDateTime;
 
 public abstract class TemporalActivity extends LedgerActivity {
-    public TemporalActivity(@NonNull String loanId, @NonNull String activityType, @NonNull String activityId, @NonNull LocalDateTime effectiveAt, @NonNull LocalDateTime createdAt) {
-        super(loanId, activityType, activityId, effectiveAt, createdAt);
+    public TemporalActivity(@NonNull String loanId, @NonNull String commonName, @NonNull String activityType, @NonNull String activityId, @NonNull LocalDateTime effectiveAt, @NonNull LocalDateTime createdAt) {
+        super(loanId, commonName, activityType, activityId, effectiveAt, createdAt);
     }
 }

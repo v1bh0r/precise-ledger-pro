@@ -6,6 +6,7 @@ import ledger.common.Ledger;
 import ledger.model.Balance;
 import ledger.model.Direction;
 import ledger.service.BalanceService;
+import ledger.service.LedgerService;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +24,9 @@ class StaticAllocationTransactionTest {
     BalanceService balanceService;
 
     @Inject
+    LedgerService ledgerService;
+
+    @Inject
     Logger log;
 
     private static final String LOAN_ID = "12345";
@@ -37,8 +41,7 @@ class StaticAllocationTransactionTest {
     void applyTo() {
         var ledger = createLedger(balanceService.createBalance(10000, 100, 10, 0, CURRENCY));
         var customSpreadOverride = balanceService.createBalance(5000, 50, 5, 0, CURRENCY);
-        var staticAllocationTransaction = new StaticAllocationTransaction(LOAN_ID, ACTIVITY_TYPE, ACTIVITY_ID,
-                customSpreadOverride, Direction.CREDIT, LocalDateTime.now(), LocalDateTime.now());
+        var staticAllocationTransaction = new StaticAllocationTransaction(LOAN_ID, "Adjustment", ACTIVITY_TYPE, ACTIVITY_ID, customSpreadOverride, Direction.CREDIT, LocalDateTime.now(), LocalDateTime.now(), ledgerService);
         staticAllocationTransaction.applyTo(ledger);
         // Expect an entry to be added to the ledger having static allocation transaction
         var entries = ledger.getEntries();

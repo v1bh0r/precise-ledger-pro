@@ -1,3 +1,11 @@
+### SDLC
+
+1. Planning
+2. Analysis and Design
+3. Development
+4. Testing
+5. Release
+
 ### Class Diagram
 
 ```plantuml
@@ -16,6 +24,7 @@ entity Balance << record >> {
   + fees(): MonetaryAmount
   + interest(): MonetaryAmount
 }
+
 enum BalanceComponent << enumeration >> {
   + valueOf(String): BalanceComponent
   + values(): BalanceComponent[]

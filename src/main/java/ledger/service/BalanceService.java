@@ -1,12 +1,15 @@
 package ledger.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import ledger.common.Ledger;
 import ledger.model.Balance;
+import ledger.model.LedgerEntry;
 import lombok.RequiredArgsConstructor;
 import org.javamoney.moneta.Money;
 
 import javax.money.Monetary;
 import javax.money.MonetaryAmountFactory;
+import java.util.ArrayList;
 
 @ApplicationScoped
 @RequiredArgsConstructor
@@ -24,5 +27,9 @@ public class BalanceService {
     public static Balance createZeroBalance(String currencyCode) {
         var currencyUnit = Monetary.getCurrency(currencyCode);
         return new Balance(Money.zero(currencyUnit), Money.zero(currencyUnit), Money.zero(currencyUnit), Money.zero(currencyUnit));
+    }
+
+    public static Ledger createBlankLedger(String loanId) {
+        return new Ledger(loanId, createZeroBalance("USD"), new ArrayList<LedgerEntry>(), "USD");
     }
 }
