@@ -28,6 +28,10 @@ public record Balance(MonetaryAmount principal, MonetaryAmount interest, Monetar
                 && this.fee.equals(balance.fee()) && this.excess.equals(balance.excess());
     }
 
+    public Balance negate() {
+        return new Balance(this.principal().negate(), this.interest().negate(), this.fee().negate(), this.excess().negate());
+    }
+
     public MonetaryAmount getTotalAmount() {
         return this.principal.add(this.interest).add(this.fee).add(this.excess);
     }

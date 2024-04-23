@@ -36,6 +36,7 @@ class LedgerActivityFactoryTest {
                 .loanId(LOAN_ID)
                 .activityType("Transaction")
                 .activityId("1")
+                .commonName("Payment")
                 .direction("DEBIT")
                 .transactionStrategy("ComputationalSpread")
                 .spread("IPF")
@@ -44,7 +45,7 @@ class LedgerActivityFactoryTest {
                 .build();
 
 
-        LedgerActivity result = ledgerActivityFactory.create(createBlankLedger(LOAN_ID), generalActivity, null);
+        LedgerActivity result = ledgerActivityFactory.create(generalActivity, null);
 
         assertInstanceOf(Transaction.class, result);
     }
@@ -55,12 +56,13 @@ class LedgerActivityFactoryTest {
                 .loanId(LOAN_ID)
                 .activityId("1")
                 .activityType("StartOfDay")
+                .commonName("Start of Day")
                 .effectiveAt(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .build();
 
         var ledger = createBlankLedger(LOAN_ID);
-        LedgerActivity result = ledgerActivityFactory.create(ledger, generalActivity, null);
+        LedgerActivity result = ledgerActivityFactory.create(generalActivity, null);
 
         assertInstanceOf(StartOfDay.class, result);
     }
@@ -72,13 +74,14 @@ class LedgerActivityFactoryTest {
                 .activityId("1")
                 .activityType("Reversal")
                 .reversalActivityType("Transaction")
+                .commonName("Payment reversal")
                 .effectiveAt(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .reversalActivityId("1")
                 .build();
 
         var ledger = createBlankLedger(LOAN_ID);
-        LedgerActivity result = ledgerActivityFactory.create(ledger, generalActivity, null);
+        LedgerActivity result = ledgerActivityFactory.create(generalActivity, null);
         assertInstanceOf(ReversalActivity.class, result);
     }
 
@@ -89,7 +92,7 @@ class LedgerActivityFactoryTest {
                 .build();
 
         var ledger = createBlankLedger(LOAN_ID);
-        LedgerActivity result = ledgerActivityFactory.create(ledger, generalActivity, null);
+        LedgerActivity result = ledgerActivityFactory.create(generalActivity, null);
 
         assertNull(result);
     }

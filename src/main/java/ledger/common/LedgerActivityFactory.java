@@ -16,7 +16,7 @@ public class LedgerActivityFactory {
     @NonNull
     private LedgerService ledgerService;
 
-    public LedgerActivity create(@NonNull Ledger ledger, @NonNull GeneralLedgerActivity generalActivity, TemporalActivityContext temporalActivityContext) {
+    public LedgerActivity create(@NonNull GeneralLedgerActivity generalActivity, TemporalActivityContext temporalActivityContext) {
         //I need to parse the activity type
         return switch (generalActivity.getActivityType()) {
             case "Transaction" -> new Transaction(generalActivity, ledgerService);
