@@ -14,26 +14,48 @@ import org.jetbrains.annotations.NotNull;
 import javax.money.MonetaryAmount;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This class represents a computational spread strategy.
  * The amount is spread in the order of the spread configuration such as principal, interest, fee
  * In case the balance is reduced to zero, the remaining amount always goes to the excess component.
  */
-@AllArgsConstructor
 @Getter
 @Setter
 public class ComputationalSpread extends TransactionSpreadStrategy {
     @NonNull
     private MonetaryAmount amount;
-    @NonNull
-    private Direction direction;
     private LinkedHashSet<BalanceComponent> spreadConfiguration;
 
-    ComputationalSpread(@NotNull MonetaryAmount amount, @NonNull Direction direction) {
-        this.direction = direction;
+    public ComputationalSpread(@NotNull MonetaryAmount amount, @NonNull Direction direction) {
+        super(direction);
         this.amount = amount;
         this.spreadConfiguration = new LinkedHashSet<>(List.of(BalanceComponent.FEES, BalanceComponent.INTEREST, BalanceComponent.PRINCIPAL));
+    }
+
+    public ComputationalSpread(@NotNull MonetaryAmount amount, @NonNull Direction direction, LinkedHashSet<BalanceComponent> spreadConfiguration) {
+        super(direction);
+        this.amount = amount;
+        this.spreadConfiguration = spreadConfiguration;
+    }
+
+    public ComputationalSpread(@NotNull MonetaryAmount amount, @NonNull Direction direction, String spread) {
+        super(direction);
+        this.amount = amount;
+        this.spreadConfiguration = getSpreadConfig(spread);
+    }
+
+    private LinkedHashSet<BalanceComponent> getSpreadConfig(String spread) {
+        return spread.chars()
+                .mapToObj(c -> Stream.of(BalanceComponent.values())
+                        .filter(component -> component.name().charAt(0) == c)
+                        .findFirst()
+                        .orElse(null))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     @Override
@@ -41,12 +63,12 @@ public class ComputationalSpread extends TransactionSpreadStrategy {
         MonetaryAmount remainingAmount = amount;
         Balance updatedBalance = balance;
 
-        if (Direction.CREDIT.equals(direction)) {
+        if (Direction.CREDIT.equals(getDirection())) {
             for (BalanceComponent component : spreadConfiguration) {
                 updatedBalance = updateBalanceForIncrease(updatedBalance, component, remainingAmount);
                 remainingAmount = Money.of(0, amount.getCurrency());
             }
-        } else if (Direction.DEBIT.equals(direction)) {
+        } else if (Direction.DEBIT.equals(getDirection())) {
             for (BalanceComponent component : spreadConfiguration) {
                 var result = updateBalanceForDecrease(updatedBalance, component, remainingAmount);
                 updatedBalance = result.balance();

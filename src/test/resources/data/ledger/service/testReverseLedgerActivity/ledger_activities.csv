@@ -1,0 +1,5 @@
+activityId,commonName,activityType,transactionStrategy,direction,spread,reversalActivityType,reversalActivityId,amount,effectiveAt,createdAt,principal,interest,fee,excess
+123,Disbursal,Transaction,ComputationalSpread,CREDIT,P,,,1000000.0,2024-03-01T00:00:00,2024-03-01T00:00:00,,,,
+123,Adjustment,Transaction,StaticSpread,CREDIT,,,,200.0,2024-03-02T13:00:00,2024-03-02T13:00:00,0,200.0,0,0
+234,Payment,Transaction,ComputationalSpread,DEBIT,IPF,,,10000.0,2024-03-03T13:00:00,2024-03-03T13:00:00,,,,
+345,Payment,Transaction,ComputationalSpread,DEBIT,IPF,,,10000.0,2024-03-04T13:00:00,2024-03-04T13:00:00,,,,

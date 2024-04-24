@@ -5,14 +5,20 @@ import ledger.common.Ledger;
 import ledger.common.LedgerActivity;
 import ledger.model.Balance;
 import ledger.model.LedgerEntry;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class LedgerService {
+    @NonNull
+    LoanService loanService;
+
     /**
      * Reconciles the ledger with another ledger containing
      * historical transactions. It does so by adding
@@ -26,7 +32,8 @@ public class LedgerService {
      * @param currentTime       The current system time injected from outside-in for testability
      * @param forkIndex         The index at which the retroactive ledger was forked from the primary ledger
      */
-    void syncWithRetroactiveLedger(Ledger primaryLedger, Ledger retroactiveLedger, LocalDateTime currentTime, int forkIndex) {
+    void syncWithRetroactiveLedger(Ledger primaryLedger, Ledger retroactiveLedger, LocalDateTime currentTime,
+                                   int forkIndex) {
         List<LedgerEntry> retroactiveLedgerEntries = retroactiveLedger.getEntriesSortedByEffectiveAt();
         var primaryLedgerEntries = primaryLedger.getEntriesSortedByEffectiveAt();
         if (retroactiveLedgerEntries.isEmpty() || primaryLedgerEntries.isEmpty()) {
@@ -39,13 +46,16 @@ public class LedgerService {
         // Apply the retroactive ledger entries to the primary ledger
         while (retroactiveIndex < retroactiveLedgerEntries.size()) {
             var retroEntry = retroactiveLedgerEntries.get(retroactiveIndex);
-            var activityKey = getActivityKey(retroEntry.getSourceLedgerActivityType(), retroEntry.getSourceLedgerActivityId());
+            var activityKey = getActivityKey(retroEntry.getSourceLedgerActivityType(),
+                    retroEntry.getSourceLedgerActivityId());
             if (processedActivities.contains(activityKey)) {
                 retroactiveIndex++;
                 continue;
             }
-            var retroTotalImpact = calculateTotalImpact(retroactiveLedger, retroEntry.getSourceLedgerActivityType(), retroEntry.getSourceLedgerActivityId());
-            var primaryTotalImpact = calculateTotalImpact(primaryLedger, retroEntry.getSourceLedgerActivityType(), retroEntry.getSourceLedgerActivityId());
+            var retroTotalImpact = calculateTotalImpact(retroactiveLedger, retroEntry.getSourceLedgerActivityType(),
+                    retroEntry.getSourceLedgerActivityId());
+            var primaryTotalImpact = calculateTotalImpact(primaryLedger, retroEntry.getSourceLedgerActivityType(),
+                    retroEntry.getSourceLedgerActivityId());
             var currentPrimaryBalance = primaryLedger.getCurrentBalance();
             if (!retroTotalImpact.equals(primaryTotalImpact)) {
                 var adjustedBalance = retroTotalImpact.subtract(primaryTotalImpact);
@@ -83,15 +93,58 @@ public class LedgerService {
     }
 
     Balance calculateTotalImpact(Ledger ledger, String activityType, String activityId) {
-        // Sum up the balances of all entries with the same source activity type and ID
-        var entries = ledger.getEntries();
-        AtomicReference<Balance> totalImpact = new AtomicReference<>(BalanceService.createZeroBalance(ledger.getCurrency()));
-        entries.stream()
-                .filter(entry -> entry.getSourceLedgerActivityType().equals(activityType) && entry.getSourceLedgerActivityId().equals(activityId))
-                .forEach(entry -> {
-                    totalImpact.set(totalImpact.get().add(entry.getBalanceChange()));
-                });
-        return totalImpact.get();
+        return ledger.calculateTotalImpact(activityType, activityId);
+    }
+
+    /**
+     * Reverses a ledger activity such as a payment transaction. It is very common to experience such reversals
+     * in the financial industry due to various reasons such as customer disputes, low funds, etc.
+     */
+    public void reverseLedgerActivity(@NonNull String ledgerActivityType, @NonNull String ledgerActivityId,
+                                      @NonNull Ledger ledger) {
+        // Add a compensation ledger entry to reverse the impact of the activity
+        final var compensationEntry = buildCompensationLedgerEntry(ledgerActivityType, ledgerActivityId, ledger);
+        ledger.addEntry(compensationEntry);
+
+        // Rollback the ledger to before the reversed activity as a retroactive ledger
+        var retroactiveLedger = ledger.rollbackToEntryBefore(ledgerActivityType, ledgerActivityId);
+        var forkIndex = retroactiveLedger.getEntries().size(); // Keep note of the fork index to be used later in sync
+
+        // Re-apply all the ledger activities that came after the reversed activity to the retroactive ledger
+        var ledgerActivities = loanService.getLedgerActivitiesCreatedSince(ledger.getLoanId(), ledgerActivityType,
+                ledgerActivityId);
+        applyLedgerActivities(retroactiveLedger, ledgerActivities);
+
+        // Sync the retroactive ledger back into the original ledger
+        syncWithRetroactiveLedger(ledger, retroactiveLedger, LocalDateTime.now(), forkIndex);
+    }
+
+    /**
+     * Builds a compensation ledger entry to reverse the impact of the activity
+     */
+    private LedgerEntry buildCompensationLedgerEntry(@NotNull String ledgerActivityType,
+                                                     @NotNull String ledgerActivityId, @NotNull Ledger ledger) {
+        var impactOfReversedActivity = ledger.calculateTotalImpact(ledgerActivityType, ledgerActivityId);
+        var negatedImpact = impactOfReversedActivity.negate();
+        var newLedgerBalance = ledger.getCurrentBalance().add(negatedImpact);
+        return LedgerEntry.builder()
+                .loanId(ledger.getLoanId())
+                .amount(negatedImpact.getTotalAmount())
+                .createdAt(LocalDateTime.now())
+                .effectiveAt(LocalDateTime.now())
+                .principal(negatedImpact.principal())
+                .interest(negatedImpact.interest())
+                .fee(negatedImpact.fee())
+                .excess(negatedImpact.excess())
+                .entryId(String.valueOf(getNextId(ledger.getEntries())))
+                .entryType("REVERSAL")
+                .principalBalance(newLedgerBalance.principal())
+                .interestBalance(newLedgerBalance.interest())
+                .feeBalance(newLedgerBalance.fee())
+                .excessBalance(newLedgerBalance.excess())
+                .sourceLedgerActivityId(ledgerActivityId)
+                .sourceLedgerActivityType(ledgerActivityType)
+                .build();
     }
 
     private String getActivityKey(String activityType, String activityId) {
@@ -99,7 +152,7 @@ public class LedgerService {
     }
 
     // TODO: We need a better way to generate IDs in order to make it thread-safe and dist prog compatible
-    private int getNextId(List<LedgerEntry> entries) {
+    public static int getNextId(List<LedgerEntry> entries) {
         // Find the greatest ID in the list and increment it by 1
         return entries.stream()
                 .map(LedgerEntry::getEntryId)

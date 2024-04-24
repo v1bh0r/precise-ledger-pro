@@ -8,6 +8,10 @@ public class MonetaryAmountCSVConverter extends AbstractBeanField<MonetaryAmount
 
     @Override
     protected MonetaryAmount convert(String value) {
-        return MonetaryUtil.monetaryAmount(Double.parseDouble(value));
+        if (value == null || value.isEmpty())
+            return MonetaryUtil.zero();
+        else {
+            return MonetaryUtil.monetaryAmount(Double.parseDouble(value));
+        }
     }
 }

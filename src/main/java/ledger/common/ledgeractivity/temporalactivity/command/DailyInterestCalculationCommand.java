@@ -1,7 +1,8 @@
 package ledger.common.ledgeractivity.temporalactivity.command;
 
+import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;
-import jakarta.inject.Singleton;
+import jakarta.enterprise.context.ApplicationScoped;
 import ledger.common.ledgeractivity.domain.InterestRate;
 import ledger.common.ledgeractivity.temporalactivity.TemporalActivityCommand;
 import ledger.common.ledgeractivity.temporalactivity.TemporalActivityCommandFactory;
@@ -17,7 +18,8 @@ import javax.money.Monetary;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Singleton
+@Startup
+@ApplicationScoped
 @AllArgsConstructor
 public class DailyInterestCalculationCommand implements TemporalActivityCommand {
     private final Logger logger;
@@ -30,7 +32,7 @@ public class DailyInterestCalculationCommand implements TemporalActivityCommand 
     }
 
     @Override
-    public LedgerEntry execute(String loanId, Balance loanBalance, String activityType, String activityId, LocalDateTime effectiveAt, TemporalActivityContext context) {
+    public LedgerEntry execute(String nextLedgerEntryId, String loanId, Balance loanBalance, String activityType, String activityId, LocalDateTime effectiveAt, TemporalActivityContext context) {
         logger.info("Executing DailyInterestCalculationCommand for loanId: " + loanId);
 
         List<InterestRate> interestRates = context.getListProperty("interestRates", InterestRate.class);
@@ -38,20 +40,6 @@ public class DailyInterestCalculationCommand implements TemporalActivityCommand 
         var interest = dailyInterestCalculator.calculateInterest(loanBalance.principal(), interestRates, daysInYear, effectiveAt);
         var currencyCode = context.getProperty("currencyCode", String.class);
 
-        return new LedgerEntry(loanId,
-                effectiveAt.toLocalDate().toString(),
-                "Interest Accrual",
-                interest,
-                Money.zero(Monetary.getCurrency(currencyCode)),
-                interest,
-                Money.zero(Monetary.getCurrency(currencyCode)),
-                Money.zero(Monetary.getCurrency(currencyCode)),
-                loanBalance.principal(),
-                loanBalance.interest().add(interest),
-                loanBalance.fee(),
-                loanBalance.excess(),
-                effectiveAt,
-                LocalDateTime.now(),
-                activityType, activityId);
+        return new LedgerEntry(loanId, nextLedgerEntryId, "Interest Accrual", interest, Money.zero(Monetary.getCurrency(currencyCode)), interest, Money.zero(Monetary.getCurrency(currencyCode)), Money.zero(Monetary.getCurrency(currencyCode)), loanBalance.principal(), loanBalance.interest().add(interest), loanBalance.fee(), loanBalance.excess(), effectiveAt, LocalDateTime.now(), activityType, activityId);
     }
 }

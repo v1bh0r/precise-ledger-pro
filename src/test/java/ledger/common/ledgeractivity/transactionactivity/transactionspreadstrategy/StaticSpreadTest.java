@@ -21,20 +21,17 @@ class StaticSpreadTest {
     MonetaryAmountFactory<Money> monetaryAmountFactory;
     Balance balance;
     Balance amountAllocation;
-    StaticSpread staticSpread;
 
     @BeforeEach
     void setUp() {
         balanceService = new BalanceService(monetaryAmountFactory);
         balance = balanceService.createBalance(100, 10, 5, 0, "USD");
         amountAllocation = balanceService.createBalance(50, 5, 2.5, 0, "USD");
-        staticSpread = new StaticSpread(amountAllocation, Direction.CREDIT);
-        staticSpread.amountAllocation = amountAllocation;
     }
 
     @Test
     void applyTo_increase() {
-        staticSpread.direction = Direction.CREDIT;
+        var staticSpread = new StaticSpread(amountAllocation, Direction.CREDIT);
         Balance expectedBalance = balanceService.createBalance(150, 15, 7.5, 0, "USD");
 
         Balance result = staticSpread.applyTo(balance);
@@ -44,7 +41,7 @@ class StaticSpreadTest {
 
     @Test
     void applyTo_decrease() {
-        staticSpread.direction = Direction.DEBIT;
+        var staticSpread = new StaticSpread(amountAllocation, Direction.DEBIT);
         Balance expectedBalance = balanceService.createBalance(50, 5, 2.5, 0, "USD");
 
         Balance result = staticSpread.applyTo(balance);

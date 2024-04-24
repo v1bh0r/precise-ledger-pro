@@ -10,6 +10,6 @@ public interface TemporalActivityCommand {
         return this.getClass().getSimpleName();
     }
 
-    LedgerEntry execute(String loanId, Balance loanBalance, String activityType, String activityId, LocalDateTime effectiveAt,
+    LedgerEntry execute(String nextLedgerEntryId, String loanId, Balance loanBalance, String activityType, String activityId, LocalDateTime effectiveAt,
                         TemporalActivityContext context);
 }

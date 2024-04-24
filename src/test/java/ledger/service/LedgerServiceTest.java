@@ -3,15 +3,23 @@ package ledger.service;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import ledger.common.Ledger;
+import ledger.common.LedgerActivityFactory;
+import ledger.common.ledgeractivity.domain.InterestRate;
+import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
+import ledger.model.BalanceComponent;
+import ledger.model.GeneralLedgerActivity;
 import ledger.model.LedgerEntry;
+import ledger.repository.LedgerActivityRepository;
 import ledger.util.CSVUtil;
 import ledger.util.ObjectToCsvUtil;
 import org.jboss.logging.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 
 import static ledger.service.BalanceService.createZeroBalance;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,8 +32,16 @@ class LedgerServiceTest {
     LedgerService ledgerService;
     @Inject
     Logger log;
+
     @Inject
-    CSVUtil csvUtil;
+    LedgerActivityFactory ledgerActivityFactory;
+
+    @Inject
+    LedgerActivityRepository ledgerActivityRepository;
+    CSVUtil<LedgerEntry> ledgerEntryCSVUtil = new CSVUtil<>();
+    CSVUtil<GeneralLedgerActivity> generalLedgerActivityCSVUtil = new CSVUtil<>();
+    CSVUtil<InterestRate> interestRateCSVUtil = new CSVUtil<>();
+
     private static final String LOAN_ID = "1234";
     private static final String CURRENCY = "USD";
     private static final String DATA_PATH = "data/ledger/service/";
@@ -36,28 +52,99 @@ class LedgerServiceTest {
     }
 
     @Test
-    void deleteme() throws IOException {
-        var ledgerJali = initLedger("syncWithRetroactiveLedger_test1/ledger_entries_duplicate.csv");
-        objectToCsvUtil.writeListToCsv(ledgerJali.getEntries(), BASE_TEST_OUTPUT_DIR + "syncWithRetroactiveLedger_test1_duplicate.csv");
-    }
-
-    @Test
     void syncWithRetroactiveLedger_test1() throws IOException {
+        // TODO: The test fails sometimes because of an issue with CSV parsing.
+        //   I haven't been able to figure out why this happens and why only some times
+        //   and not always.
+        //   https://chat.openai.com/share/b3025f3c-e35b-45f4-a4b4-85767f579a93
         var ledger = initLedger("syncWithRetroactiveLedger_test1/ledger_entries.csv");
-        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR + "syncWithRetroactiveLedger_test1_input1.csv");
+        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR +
+                "syncWithRetroactiveLedger_test1_input1.csv");
         var retroactiveLedger = initLedger("syncWithRetroactiveLedger_test1/retroactive_ledger_entries.csv");
-        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR + "syncWithRetroactiveLedger_test1_input2.csv");
+        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR +
+                "syncWithRetroactiveLedger_test1_input2.csv");
         var currentTime = LocalDateTime.now();
         ledgerService.syncWithRetroactiveLedger(ledger, retroactiveLedger, currentTime, 4);
         var expectedLedgerAfterSync = initLedger("syncWithRetroactiveLedger_test1/ledger_entries_after_sync.csv");
 
-        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR + "syncWithRetroactiveLedger_test1_output.csv");
+        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR +
+                "syncWithRetroactiveLedger_test1_output.csv");
         assertEquals(expectedLedgerAfterSync.getEntries().size(), ledger.getEntries().size());
         assertEquals(expectedLedgerAfterSync.getCurrentBalance(), ledger.getCurrentBalance());
     }
 
+    @Test
+    void applyLedgerActivities_test1() throws IOException {
+        // Setup
+
+        var interestRates = interestRateCSVUtil.parse(DATA_PATH + "applyLedgerActivities_test1/interest_rates.csv",
+                InterestRate.class);
+        var temporalContext = new TemporalActivityContext();
+        temporalContext.setProperty("interestRates", interestRates);
+        temporalContext.setProperty("daysInYear", 365);
+        temporalContext.setProperty("currencyCode", CURRENCY);
+
+        var ledger = createEmptyLedger();
+        var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + "applyLedgerActivities_test1" +
+                "/ledger_activities.csv", GeneralLedgerActivity.class);
+        var ledgerActivities = activities.stream().map(activity -> {
+            activity.setLoanId(LOAN_ID);
+            return ledgerActivityFactory.create(activity, temporalContext);
+        }).toList();
+
+        // Act
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities);
+
+        // Write to CSV for debugging only
+        // TODO: Delete this line before committing
+        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR +
+                "applyLedgerActivities_test1_ledger_entries.csv");
+
+        // Assertions
+        var expectedLedger = initLedger("applyLedgerActivities_test1/ledger_entries.csv");
+
+        assertEquals(expectedLedger.getEntries().size(), ledger.getEntries().size());
+        assertEquals(expectedLedger.getCurrentBalance(), ledger.getCurrentBalance());
+    }
+
+    private static @NotNull Ledger createEmptyLedger() {
+        return new Ledger(LOAN_ID, createZeroBalance(CURRENCY), new ArrayList<>(), CURRENCY);
+    }
+
+    @Test
+    void testReverseLedgerActivity() throws IOException {
+        // Setup
+        var ledger = createEmptyLedger();
+        var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH +
+                "testReverseLedgerActivity/ledger_activities.csv", GeneralLedgerActivity.class);
+        var ledgerActivities = activities.stream().map(activity -> {
+            activity.setLoanId(LOAN_ID);
+            return ledgerActivityFactory.create(activity, new TemporalActivityContext());
+        }).toList();
+        ledgerActivities.forEach(ledgerActivityRepository::insert);
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities);
+
+        // Act
+        ledgerService.reverseLedgerActivity("Transaction", "234", ledger);
+
+        // Verify
+        var entries = ledger.getEntries();
+        assertEquals(6, entries.size());
+        assertEquals(990200.00, ledger.getCurrentBalance().principal().getNumber().doubleValue());
+        assertEquals(0.00, ledger.getCurrentBalance().interest().getNumber().doubleValue());
+        var impactOfSecondPayment = ledgerService.calculateTotalImpact(ledger, "Transaction", "345");
+        assertEquals(-9800, impactOfSecondPayment.get(BalanceComponent.PRINCIPAL).getNumber().doubleValue());
+        assertEquals(-200, impactOfSecondPayment.get(BalanceComponent.INTEREST).getNumber().doubleValue());
+        var impactOfFirstPayment = ledgerService.calculateTotalImpact(ledger, "Transaction", "234");
+        assertEquals(0, impactOfFirstPayment.getTotalAmount().getNumber().doubleValue());
+
+        // Write to CSV for debugging only
+        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR +
+                "testReverseLedgerActivity.csv");
+    }
+
     private Ledger initLedger(String path) throws IOException {
-        var ledgerEntries = csvUtil.parseLedgerEntryCSV(DATA_PATH + path);
+        var ledgerEntries = ledgerEntryCSVUtil.parse(DATA_PATH + path, LedgerEntry.class);
         return new Ledger(LOAN_ID, createZeroBalance(CURRENCY), ledgerEntries, CURRENCY);
     }
 }

@@ -7,6 +7,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * A Temporal Activity Context generally contains information necessary to compute the daily interest accrual
+ * See the test for an example: ledger.common.ledgeractivity.temporalactivity.StartOfDayTest#applyTo()
+ * It can, however, contain different kinds of properties for different kinds of Temporal Activities
+ */
 @AllArgsConstructor
 public class TemporalActivityContext {
     private final Map<String, Object> properties = new HashMap<>();
