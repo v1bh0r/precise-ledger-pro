@@ -118,7 +118,7 @@ repeat
           last entry <= effectiveAt;
         :Get ledger activities effective after but created before the ledger activity;
         :Add the ledger activity to the retroactiveLedger;
-        :ledgerService.applyLedgerActivities(rangretroactiveLedger, activities);
+        :ledgerService.applyLedgerActivities(retroactiveLedger, activities);
         :ledgerService.syncWithRetroactiveLedger(this, retroactiveLedger);
       else if (The activity is a reversal of another activity) then (reversal)
         :Gather all related ledger event entries and do a negative entry for each;
