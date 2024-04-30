@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import static ledger.common.MonetaryUtil.monetaryAmount;
+import static ledger.common.MonetaryUtil.toMonetaryAmount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @QuarkusTest
@@ -58,7 +58,7 @@ class StartOfDayTest {
         assertEquals(1, entries.size());
         var entry = entries.getFirst();
         var balance = entry.getBalance();
-        assertEquals(monetaryAmount(10000), balance.principal());
-        assertEquals(monetaryAmount(102.74), balance.interest().with(Monetary.getDefaultRounding()));
+        assertEquals(toMonetaryAmount(10000), balance.principal());
+        assertEquals(toMonetaryAmount(102.74), balance.interest().with(Monetary.getDefaultRounding()));
     }
 }

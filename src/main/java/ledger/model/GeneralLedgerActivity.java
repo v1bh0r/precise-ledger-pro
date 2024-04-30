@@ -1,16 +1,12 @@
 package ledger.model;
 
-// activityId,commonName,activityType,transactionStrategy,direction,spread,reversalActivityType,reversalActivityId,amount,effectiveAt,createdAt
-
-import com.opencsv.bean.CsvBindByName;
-import com.opencsv.bean.CsvCustomBindByName;
-import com.opencsv.bean.CsvDate;
-import ledger.common.MonetaryAmountCSVConverter;
 import ledger.common.MonetaryUtil;
 import lombok.*;
+import org.apache.commons.csv.CSVRecord;
 
 import javax.money.MonetaryAmount;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Getter
 @Setter
@@ -18,39 +14,64 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class GeneralLedgerActivity {
-    @CsvBindByName
+
     private String loanId;
-    @CsvBindByName
+
     private String activityId;
-    @CsvBindByName
+
     private String commonName;
-    @CsvBindByName
+
     private String activityType;
-    @CsvBindByName
+
     private String transactionStrategy;
-    @CsvCustomBindByName(converter = MonetaryAmountCSVConverter.class)
+
     private MonetaryAmount principal = MonetaryUtil.zero();
-    @CsvCustomBindByName(converter = MonetaryAmountCSVConverter.class)
+
     private MonetaryAmount interest = MonetaryUtil.zero();
-    @CsvCustomBindByName(converter = MonetaryAmountCSVConverter.class)
+
     private MonetaryAmount fee = MonetaryUtil.zero();
-    @CsvCustomBindByName(converter = MonetaryAmountCSVConverter.class)
+
     private MonetaryAmount excess = MonetaryUtil.zero();
-    @CsvBindByName
+
     private String direction;
-    @CsvBindByName
+
     private String spread;
-    @CsvBindByName
+
     private String reversalActivityType;
-    @CsvBindByName
+
     private String reversalActivityId;
-    @CsvCustomBindByName(converter = MonetaryAmountCSVConverter.class)
+
     @Builder.Default
     private MonetaryAmount amount = MonetaryUtil.zero();
-    @CsvBindByName
-    @CsvDate(value = "yyyy-MM-dd'T'HH:mm:ss")
+
     LocalDateTime effectiveAt;
-    @CsvDate(value = "yyyy-MM-dd'T'HH:mm:ss")
-    @CsvBindByName
+
     LocalDateTime createdAt;
+
+    //activityId,commonName,activityType,transactionStrategy,direction,spread,reversalActivityType,
+    // reversalActivityId,amount,effectiveAt,createdAt,principal,interest,fee,excess
+    @SuppressWarnings("unused")
+    public GeneralLedgerActivity(CSVRecord record) {
+        this.loanId = record.get("loanId");
+        this.activityId = record.get("activityId");
+        this.commonName = record.get("commonName");
+        this.activityType = record.get("activityType");
+        this.transactionStrategy = record.get("transactionStrategy");
+        this.direction = record.get("direction");
+        this.spread = record.get("spread");
+        this.reversalActivityType = record.get("reversalActivityType");
+        this.reversalActivityId = record.get("reversalActivityId");
+        this.amount = MonetaryUtil.toMonetaryAmount(record.get("amount"));
+        this.effectiveAt = LocalDateTime.parse(record.get("effectiveAt"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T" + "'HH:mm:ss"));
+        this.createdAt = LocalDateTime.parse(record.get("createdAt"), DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"
+                + ":ss"));
+
+        this.principal = MonetaryUtil.toMonetaryAmount(record.get("principal"));
+        this.interest = MonetaryUtil.toMonetaryAmount(record.get("interest"));
+        this.fee = MonetaryUtil.toMonetaryAmount(record.get("fee"));
+        this.excess = MonetaryUtil.toMonetaryAmount(record.get("excess"));
+    }
+
+
 }

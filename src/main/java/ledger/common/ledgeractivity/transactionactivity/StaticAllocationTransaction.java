@@ -14,16 +14,18 @@ public class StaticAllocationTransaction extends Transaction {
     @NonNull
     private final Balance customSpreadOverride;
 
-    public StaticAllocationTransaction(@NonNull String loanId, @NonNull String commonName, @NonNull String activityType, @NonNull String activityId,
+    public StaticAllocationTransaction(@NonNull String loanId, @NonNull String commonName,
+                                       @NonNull String activityType, @NonNull String activityId,
                                        @NonNull Balance customSpreadOverride, @NonNull Direction direction,
-                                       @NonNull LocalDateTime effectiveAt, @NonNull LocalDateTime createdAt, @NonNull LedgerService ledgerService) {
+                                       @NonNull LocalDateTime effectiveAt, @NonNull LocalDateTime createdAt,
+                                       @NonNull LedgerService ledgerService) {
         super(loanId, commonName, activityType, activityId, customSpreadOverride.getTotalAmount(),
                 new StaticSpread(customSpreadOverride, direction), effectiveAt, createdAt, ledgerService);
         this.customSpreadOverride = customSpreadOverride;
     }
 
     @Override
-    public void applyTo(Ledger ledger) {
+    public void generateLedgerEntries(Ledger ledger) {
         var currentBalance = ledger.getCurrentBalance();
         var newBalance = transactionSpreadStrategy.applyTo(ledger.getCurrentBalance());
         var difference = newBalance.subtract(currentBalance);

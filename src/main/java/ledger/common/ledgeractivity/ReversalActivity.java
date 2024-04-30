@@ -4,8 +4,10 @@ import ledger.common.Ledger;
 import ledger.common.LedgerActivity;
 import ledger.model.GeneralLedgerActivity;
 import ledger.service.LedgerService;
+import lombok.Getter;
 import lombok.NonNull;
 
+@Getter
 public class ReversalActivity extends LedgerActivity {
     @NonNull
     String reversedActivityType;
@@ -14,8 +16,10 @@ public class ReversalActivity extends LedgerActivity {
     @NonNull
     LedgerService ledgerService;
 
-    public ReversalActivity(@NonNull GeneralLedgerActivity generalLedgerActivity, @NonNull LedgerService ledgerService) {
-        super(generalLedgerActivity.getLoanId(), generalLedgerActivity.getCommonName(), generalLedgerActivity.getActivityType(), generalLedgerActivity.getActivityId(),
+    public ReversalActivity(@NonNull GeneralLedgerActivity generalLedgerActivity,
+                            @NonNull LedgerService ledgerService) {
+        super(generalLedgerActivity.getLoanId(), generalLedgerActivity.getCommonName(),
+                generalLedgerActivity.getActivityType(), generalLedgerActivity.getActivityId(),
                 generalLedgerActivity.getEffectiveAt(), generalLedgerActivity.getCreatedAt());
         this.reversedActivityType = generalLedgerActivity.getReversalActivityType();
         this.reversedActivityId = generalLedgerActivity.getReversalActivityId();
@@ -23,7 +27,7 @@ public class ReversalActivity extends LedgerActivity {
     }
 
     @Override
-    public void applyTo(Ledger ledger) {
-        ledgerService.reverseLedgerActivity(reversedActivityType, reversedActivityId, ledger);
+    public void generateLedgerEntries(Ledger ledger) {
+        ledgerService.reverseLedgerActivity(this, ledger);
     }
 }

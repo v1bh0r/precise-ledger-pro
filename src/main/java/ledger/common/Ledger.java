@@ -23,6 +23,7 @@ public class Ledger implements Cloneable {
     private String currency;
 
     public void addEntry(LedgerEntry entry) {
+        entry.updateBalances(this.getCurrentBalance());
         entries.add(entry);
     }
 
@@ -36,7 +37,7 @@ public class Ledger implements Cloneable {
     public Ledger rollbackToEntryBefore(LocalDateTime effectiveAt) {
         // Get entries subset that are effective before the given effectiveAt
         var newEntries = entries.stream().filter(entry -> !entry.getEffectiveAt().isAfter(effectiveAt)).toList();
-        return new Ledger(loanId, startBalance, newEntries, currency);
+        return new Ledger(loanId, startBalance, new ArrayList<>(newEntries), currency);
     }
 
     // TODO: Test that the new ledger is a deep clone of the original ledger
@@ -64,6 +65,19 @@ public class Ledger implements Cloneable {
         }
     }
 
+    public Balance getBalanceAt(LocalDateTime effectiveAt) {
+        // Find the last entry that is effective before the given effectiveAt
+        var lastEntryBeforeEffectiveAt = getEntriesSortedByEffectiveAt().stream()
+                .filter(entry -> !entry.getEffectiveAt().isAfter(effectiveAt)).reduce((first, second) -> second)
+                .orElse(null);
+
+        if (lastEntryBeforeEffectiveAt == null) {
+            return startBalance;
+        } else {
+            return lastEntryBeforeEffectiveAt.getBalance();
+        }
+    }
+
     public void log(Logger log) {
         log.info("Ledger for loanId: " + loanId);
         entries.forEach(entry -> log.info(entry.toString()));
@@ -74,12 +88,18 @@ public class Ledger implements Cloneable {
         var entries = this.getEntries();
         AtomicReference<Balance> totalImpact =
                 new AtomicReference<>(BalanceService.createZeroBalance(this.getCurrency()));
-        entries.stream()
-                .filter(entry -> entry.getSourceLedgerActivityType()
-                        .equals(activityType) && entry.getSourceLedgerActivityId().equals(activityId))
-                .forEach(entry -> {
-                    totalImpact.set(totalImpact.get().add(entry.getBalanceChange()));
-                });
-        return totalImpact.get();
+
+        var matchingEntries = entries.stream().filter(entry -> entry.getSourceLedgerActivityType()
+                .equals(activityType) && entry.getSourceLedgerActivityId().equals(activityId)).toList();
+
+        if (matchingEntries.isEmpty()) {
+            return null;
+        } else {
+            matchingEntries.forEach(entry -> {
+                totalImpact.set(totalImpact.get().add(entry.getBalanceChange()));
+            });
+            return totalImpact.get();
+        }
     }
+
 }
