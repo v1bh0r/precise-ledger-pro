@@ -1,7 +1,9 @@
 package ledger.model;
 
 import ledger.common.MonetaryUtil;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import org.apache.commons.csv.CSVRecord;
 
 import javax.money.MonetaryAmount;
@@ -9,10 +11,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Getter
-@Setter
 @Builder
 @AllArgsConstructor
-@NoArgsConstructor
 public class GeneralLedgerActivity {
 
     private String loanId;
@@ -25,13 +25,13 @@ public class GeneralLedgerActivity {
 
     private String transactionStrategy;
 
-    private MonetaryAmount principal = MonetaryUtil.zero();
+    private MonetaryAmount principal;
 
-    private MonetaryAmount interest = MonetaryUtil.zero();
+    private MonetaryAmount interest;
 
-    private MonetaryAmount fee = MonetaryUtil.zero();
+    private MonetaryAmount fee;
 
-    private MonetaryAmount excess = MonetaryUtil.zero();
+    private MonetaryAmount excess;
 
     private String direction;
 
@@ -48,8 +48,6 @@ public class GeneralLedgerActivity {
 
     LocalDateTime createdAt;
 
-    //activityId,commonName,activityType,transactionStrategy,direction,spread,reversalActivityType,
-    // reversalActivityId,amount,effectiveAt,createdAt,principal,interest,fee,excess
     @SuppressWarnings("unused")
     public GeneralLedgerActivity(CSVRecord record) {
         this.loanId = record.get("loanId");
@@ -72,6 +70,4 @@ public class GeneralLedgerActivity {
         this.fee = MonetaryUtil.toMonetaryAmount(record.get("fee"));
         this.excess = MonetaryUtil.toMonetaryAmount(record.get("excess"));
     }
-
-
 }

@@ -152,6 +152,10 @@ public class LedgerService {
      */
     private LedgerEntry buildCompensationLedgerEntry(@NotNull String ledgerActivityType,
                                                      @NotNull String ledgerActivityId, @NotNull Ledger ledger) {
+        if (ledgerActivityType.isBlank() || ledgerActivityId.isBlank()) {
+            throw new IllegalArgumentException("LedgerActivityType and LedgerActivityId cannot be blank");
+        }
+
         var impactOfReversedActivity = ledger.calculateTotalImpact(ledgerActivityType, ledgerActivityId);
         if (impactOfReversedActivity == null) {
             throw new RuntimeException(String.format("Loan %s Attempt to buildCompensationLedgerEntry Ledger " +
@@ -159,6 +163,7 @@ public class LedgerService {
                             "entries",
                     ledger.getLoanId(), ledgerActivityType, ledgerActivityId));
         }
+        
         var negatedImpact = impactOfReversedActivity.negate();
         var newLedgerBalance = ledger.getCurrentBalance().add(negatedImpact);
         return LedgerEntry.builder().loanId(ledger.getLoanId()).amount(negatedImpact.getTotalAmount())

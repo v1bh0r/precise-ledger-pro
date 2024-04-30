@@ -92,7 +92,6 @@ class LedgerServiceTest {
         var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + "applyLedgerActivities_test1" +
                 "/ledger_activities.csv", GeneralLedgerActivity.class);
         var ledgerActivities = activities.stream().map(activity -> {
-            activity.setLoanId(LOAN_ID);
             var ledgerActivity = ledgerActivityFactory.create(activity, temporalContext);
             ledgerActivityRepository.insert(ledgerActivity);
             return ledgerActivity;
@@ -133,10 +132,8 @@ class LedgerServiceTest {
         var ledger = createEmptyLedger();
         var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + "testReverseLedgerActivity/ledger_activities" +
                 ".csv", GeneralLedgerActivity.class);
-        var ledgerActivities = activities.stream().map(activity -> {
-            activity.setLoanId(LOAN_ID);
-            return ledgerActivityFactory.create(activity, new TemporalActivityContext());
-        }).toList();
+        var ledgerActivities = activities.stream()
+                .map(activity -> ledgerActivityFactory.create(activity, new TemporalActivityContext())).toList();
         ledgerActivities.forEach(ledgerActivityRepository::insert);
         ledgerService.applyLedgerActivities(ledger, ledgerActivities);
 
@@ -193,10 +190,8 @@ class LedgerServiceTest {
         var ledger = createEmptyLedger();
         var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + "testReverseLedgerActivity/ledger_activities" +
                 ".csv", GeneralLedgerActivity.class);
-        var ledgerActivities = activities.stream().map(activity -> {
-            activity.setLoanId(LOAN_ID);
-            return ledgerActivityFactory.create(activity, new TemporalActivityContext());
-        }).toList();
+        var ledgerActivities = activities.stream()
+                .map(activity -> ledgerActivityFactory.create(activity, new TemporalActivityContext())).toList();
         ledgerActivities.forEach(ledgerActivityRepository::insert);
         ledgerService.applyLedgerActivities(ledger, ledgerActivities);
 

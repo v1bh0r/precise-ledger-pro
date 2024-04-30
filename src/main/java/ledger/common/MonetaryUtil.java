@@ -12,6 +12,10 @@ public class MonetaryUtil {
             new MonetaryProducer().produceMonetaryAmountFactory();
     private static final String DEFAULT_CURRENCY_CODE = "USD";
 
+    public static String getDefaultCurrencyCode() {
+        return DEFAULT_CURRENCY_CODE;
+    }
+
     public static MonetaryAmount toMonetaryAmount(double amount, String currencyCode) {
         return monetaryAmountFactory.setCurrency(currencyCode).setNumber(amount).create();
     }
