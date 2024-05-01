@@ -31,13 +31,14 @@ public class LedgerService {
      * entries between the two ledgers grouped by the source
      * event type and ID.
      *
-     * @param primaryLedger     The ledger from which a retroactive ledger was forked from
-     * @param retroactiveLedger The ledger having historical transactions that need to be reconciled
-     * @param currentTime       The current system time injected from outside-in for testability
-     * @param forkIndex         The index at which the retroactive ledger was forked from the primary ledger
+     * @param primaryLedger         The ledger from which a retroactive ledger was forked from
+     * @param retroactiveLedger     The ledger having historical transactions that need to be reconciled
+     * @param currentTime           The current system time injected from outside-in for testability
+     * @param adjustmentEffectiveAt The effective date of the adjustment entries that might be created from the sync
+     * @param forkIndex             The index at which the retroactive ledger was forked from the primary ledger
      */
     void syncWithRetroactiveLedger(Ledger primaryLedger, Ledger retroactiveLedger, LocalDateTime currentTime,
-                                   int forkIndex) {
+                                   LocalDateTime adjustmentEffectiveAt, int forkIndex) {
         List<LedgerEntry> retroactiveLedgerEntries = retroactiveLedger.getEntriesSortedByEffectiveAt();
         var primaryLedgerEntries = primaryLedger.getEntriesSortedByEffectiveAt();
         if (retroactiveLedgerEntries.isEmpty() || primaryLedgerEntries.isEmpty()) {
@@ -72,10 +73,10 @@ public class LedgerService {
                 if (!retroTotalImpact.equals(primaryTotalImpact)) {
                     var adjustedBalance = retroTotalImpact.subtract(primaryTotalImpact);
                     var adjustment = LedgerEntry.builder().loanId(primaryLedger.getLoanId())
-                            .amount(adjustedBalance.getTotalAmount()).createdAt(currentTime).effectiveAt(currentTime)
-                            .principal(adjustedBalance.principal()).interest(adjustedBalance.interest())
-                            .fee(adjustedBalance.fee()).excess(adjustedBalance.excess()).entryId(generateId())
-                            .entryType(ADJUSTMENT)
+                            .amount(adjustedBalance.getTotalAmount()).createdAt(currentTime)
+                            .effectiveAt(adjustmentEffectiveAt).principal(adjustedBalance.principal())
+                            .interest(adjustedBalance.interest()).fee(adjustedBalance.fee())
+                            .excess(adjustedBalance.excess()).entryId(generateId()).entryType(ADJUSTMENT)
                             .principalBalance(currentPrimaryBalance.principal().add(adjustedBalance.principal()))
                             .interestBalance(currentPrimaryBalance.interest().add(adjustedBalance.interest()))
                             .feeBalance(currentPrimaryBalance.fee().add(adjustedBalance.fee()))
@@ -91,31 +92,32 @@ public class LedgerService {
         System.out.println("primaryLedger size:" + primaryLedger.getEntries().size());
     }
 
-    void applyLedgerActivity(Ledger ledger, LedgerActivity ledgerActivity) {
-        applyLedgerActivities(ledger, List.of(ledgerActivity));
-    }
-
     void applyLedgerActivities(Ledger ledger, List<LedgerActivity> ledgerActivities) {
         for (var ledgerActivity : ledgerActivities) {
             if (ledgerActivity.isBackdatedEntry(ledger)) {
-                // Rollback the ledger to before backdated entry as a retroactive ledger
-                var retroactiveLedger = ledger.rollbackToEntryBefore(ledgerActivity.getEffectiveAt());
-                var forkIndex = retroactiveLedger.getEntries().size();
-                ledgerActivity.applyTo(retroactiveLedger);
-                retroactiveLedger.getEntries().subList(forkIndex, retroactiveLedger.getEntries().size())
-                        .forEach(ledger::addEntry);
-                // Re-apply all the ledger activities that came after the back dated activity to the retroactive ledger
-                var ledgerActivitiesEffectiveOnOrAfter =
-                        loanService.getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBefore(ledger.getLoanId(),
-                                ledgerActivity.getEffectiveAt(), ledgerActivity.getCreatedAt());
-                applyLedgerActivities(retroactiveLedger, ledgerActivitiesEffectiveOnOrAfter);
-
-                // Sync the retroactive ledger back into the original ledger
-                syncWithRetroactiveLedger(ledger, retroactiveLedger, LocalDateTime.now(), forkIndex);
+                performBackdatedActivity(ledger, ledgerActivity);
             } else {
                 ledgerActivity.applyTo(ledger);
             }
         }
+    }
+
+    private void performBackdatedActivity(Ledger ledger, LedgerActivity ledgerActivity) {
+        // Rollback the ledger to before backdated entry as a retroactive ledger
+        var retroactiveLedger = ledger.rollbackToEntryBefore(ledgerActivity.getEffectiveAt());
+        var forkIndex = retroactiveLedger.getEntries().size();
+        ledgerActivity.applyTo(retroactiveLedger);
+        retroactiveLedger.getEntries().subList(forkIndex, retroactiveLedger.getEntries().size())
+                .forEach(ledger::addEntry);
+        // Re-apply all the ledger activities that came after the back dated activity to the retroactive ledger
+        var ledgerActivitiesEffectiveOnOrAfter =
+                loanService.getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBefore(ledger.getLoanId(),
+                        ledgerActivity.getEffectiveAt(), ledgerActivity.getCreatedAt());
+        applyLedgerActivities(retroactiveLedger, ledgerActivitiesEffectiveOnOrAfter);
+
+        // Sync the retroactive ledger back into the original ledger
+        syncWithRetroactiveLedger(ledger, retroactiveLedger, LocalDateTime.now(), ledgerActivity.getCreatedAt(),
+                forkIndex);
     }
 
     Balance calculateTotalImpact(Ledger ledger, String activityType, String activityId) {
@@ -144,7 +146,8 @@ public class LedgerService {
         applyLedgerActivities(retroactiveLedger, ledgerActivities);
 
         // Sync the retroactive ledger back into the original ledger
-        syncWithRetroactiveLedger(ledger, retroactiveLedger, LocalDateTime.now(), forkIndex);
+        syncWithRetroactiveLedger(ledger, retroactiveLedger, LocalDateTime.now(), reversalActivity.getCreatedAt(),
+                forkIndex);
     }
 
     /**
@@ -159,11 +162,10 @@ public class LedgerService {
         var impactOfReversedActivity = ledger.calculateTotalImpact(ledgerActivityType, ledgerActivityId);
         if (impactOfReversedActivity == null) {
             throw new RuntimeException(String.format("Loan %s Attempt to buildCompensationLedgerEntry Ledger " +
-                            "Activity: " + " %s Type LedgerActivity Id: %s but the reversed activity has no ledger " +
-                            "entries",
-                    ledger.getLoanId(), ledgerActivityType, ledgerActivityId));
+                    "Activity: " + " %s Type LedgerActivity Id: %s but the reversed activity has no ledger " +
+                    "entries", ledger.getLoanId(), ledgerActivityType, ledgerActivityId));
         }
-        
+
         var negatedImpact = impactOfReversedActivity.negate();
         var newLedgerBalance = ledger.getCurrentBalance().add(negatedImpact);
         return LedgerEntry.builder().loanId(ledger.getLoanId()).amount(negatedImpact.getTotalAmount())

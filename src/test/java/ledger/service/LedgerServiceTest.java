@@ -9,6 +9,7 @@ import ledger.common.ledgeractivity.temporalactivity.StartOfDay;
 import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
 import ledger.model.BalanceComponent;
 import ledger.model.GeneralLedgerActivity;
+import ledger.model.LedgerActivityImpactExpectation;
 import ledger.model.LedgerEntry;
 import ledger.repository.LedgerActivityRepository;
 import ledger.util.CSVUtil;
@@ -22,11 +23,11 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.List;
 
 import static ledger.common.MonetaryUtil.toDouble;
 import static ledger.service.BalanceService.createZeroBalance;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 class LedgerServiceTest {
@@ -42,6 +43,7 @@ class LedgerServiceTest {
     @Inject
     LedgerActivityRepository ledgerActivityRepository;
     CSVUtil<LedgerEntry> ledgerEntryCSVUtil = new CSVUtil<>();
+    CSVUtil<LedgerActivityImpactExpectation> ledgerActivityImpactExpectationCSVUtil = new CSVUtil<>();
     CSVUtil<GeneralLedgerActivity> generalLedgerActivityCSVUtil = new CSVUtil<>();
     CSVUtil<InterestRate> interestRateCSVUtil = new CSVUtil<>();
 
@@ -73,7 +75,7 @@ class LedgerServiceTest {
         objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR +
                 "syncWithRetroactiveLedger_test1_input2.csv");
         var currentTime = LocalDateTime.now();
-        ledgerService.syncWithRetroactiveLedger(ledger, retroactiveLedger, currentTime, 4);
+        ledgerService.syncWithRetroactiveLedger(ledger, retroactiveLedger, currentTime, currentTime, 4);
         var expectedLedgerAfterSync = initLedger("syncWithRetroactiveLedger_test1/ledger_entries_after_sync.csv");
 
         objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR +
@@ -130,8 +132,9 @@ class LedgerServiceTest {
     void testReverseLedgerActivity() throws IOException {
         // Setup
         var ledger = createEmptyLedger();
-        var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + "testReverseLedgerActivity/ledger_activities" +
-                ".csv", GeneralLedgerActivity.class);
+        var activities =
+                generalLedgerActivityCSVUtil.parse(DATA_PATH + "testReverseLedgerActivity/ledger_activities" + ".csv"
+                        , GeneralLedgerActivity.class);
         var ledgerActivities = activities.stream()
                 .map(activity -> ledgerActivityFactory.create(activity, new TemporalActivityContext())).toList();
         ledgerActivities.forEach(ledgerActivityRepository::insert);
@@ -155,8 +158,7 @@ class LedgerServiceTest {
     private @NotNull Ledger setupAndActForTestPastPayment(String x) throws IOException {
         var temporalContext = getSampleTemporalActivityContext();
         var ledger = createEmptyLedger();
-        var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + x,
-                GeneralLedgerActivity.class);
+        var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + x, GeneralLedgerActivity.class);
         var ledgerActivities = activities.stream()
                 .map(activity -> ledgerActivityFactory.create(activity, temporalContext)).toList();
         ledgerActivities.forEach(ledgerActivityRepository::insert);
@@ -175,7 +177,26 @@ class LedgerServiceTest {
     @Test
     void testPastDatedPayment2() throws IOException {
         final var ledger = setupAndActForTestPastPayment("testPastDatedPayment/ledger_activities2.csv");
-        assertEquals(980000, ledger.getCurrentBalance().getTotalAmount().getNumber().doubleValue());
+        var impactExpectations = getImpactExpectations(DATA_PATH + "testPastDatedPayment" +
+                "/ledger_activities2_expectation.csv");
+        impactExpectations.forEach(expectation -> {
+            var impact = expectation.getImpact();
+            var actualImpact = ledgerService.calculateTotalImpact(ledger, expectation.activityType(),
+                    expectation.activityId());
+            assertTrue(impact.equals(actualImpact),
+                    "Activity type: " + expectation.activityId() + " Activity Type: " + expectation.activityType() +
+                            " " + "Expectation: " + expectation.getImpact() + " Actual: " + actualImpact);
+        });
+        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR + "testPastDatedPayment2.csv");
+    }
+
+    private List<LedgerActivityImpactExpectation> getImpactExpectations(String filePath) {
+        try {
+            return ledgerActivityImpactExpectationCSVUtil.parse(filePath, LedgerActivityImpactExpectation.class);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     @Test
@@ -188,8 +209,9 @@ class LedgerServiceTest {
     void shouldThrowIllegalArgumentExceptionWhenReversingBackdatedEntry() throws IOException {
         // Setup
         var ledger = createEmptyLedger();
-        var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + "testReverseLedgerActivity/ledger_activities" +
-                ".csv", GeneralLedgerActivity.class);
+        var activities =
+                generalLedgerActivityCSVUtil.parse(DATA_PATH + "testReverseLedgerActivity/ledger_activities" + ".csv"
+                        , GeneralLedgerActivity.class);
         var ledgerActivities = activities.stream()
                 .map(activity -> ledgerActivityFactory.create(activity, new TemporalActivityContext())).toList();
         ledgerActivities.forEach(ledgerActivityRepository::insert);
@@ -199,8 +221,7 @@ class LedgerServiceTest {
 
         // Act
         assertThrows(IllegalArgumentException.class, () -> {
-            var activity = new StartOfDay(LOAN_ID, "SOD", LocalDateTime.parse("2024-03-01T00:00:00"),
-                    temporalContext);
+            var activity = new StartOfDay(LOAN_ID, "SOD", LocalDateTime.parse("2024-03-01T00:00:00"), temporalContext);
             activity.applyTo(ledger);
         });
     }

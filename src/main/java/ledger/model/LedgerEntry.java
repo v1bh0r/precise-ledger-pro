@@ -18,7 +18,7 @@ import static ledger.common.MonetaryUtil.zero;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class LedgerEntry {
+public class LedgerEntry implements Cloneable {
 
     private String loanId;
 
@@ -119,5 +119,14 @@ public class LedgerEntry {
         this.interestBalance = currentLedgerBalance.interest().add(interest);
         this.feeBalance = currentLedgerBalance.fee().add(fee);
         this.excessBalance = currentLedgerBalance.excess().add(excess);
+    }
+
+    @Override
+    public LedgerEntry clone() {
+        try {
+            return (LedgerEntry) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
     }
 }

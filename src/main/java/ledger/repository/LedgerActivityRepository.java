@@ -65,9 +65,9 @@ public class LedgerActivityRepository {
                                                                                           LocalDateTime effectiveAt,
                                                                                           LocalDateTime createdAt) {
         return ledgerActivities.stream()
-                .filter(activity -> activity.getLoanId().equals(loanId) && (activity.getEffectiveAt()
+                .filter(activity -> activity.getLoanId().equals(loanId) && ((activity.getEffectiveAt()
                         .isAfter(effectiveAt)) || activity.getEffectiveAt()
-                        .isEqual(effectiveAt) && (activity.getCreatedAt().isBefore(createdAt)))
+                        .isEqual(effectiveAt)) && (activity.getCreatedAt().isBefore(createdAt)))
                 .toList();
     }
 

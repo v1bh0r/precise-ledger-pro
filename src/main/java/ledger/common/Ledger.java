@@ -23,8 +23,9 @@ public class Ledger implements Cloneable {
     private String currency;
 
     public void addEntry(LedgerEntry entry) {
-        entry.updateBalances(this.getCurrentBalance());
-        entries.add(entry);
+        var newEntry = entry.clone();
+        newEntry.updateBalances(this.getCurrentBalance());
+        entries.add(newEntry);
     }
 
     public List<LedgerEntry> getEntriesSortedByEffectiveAt() {
