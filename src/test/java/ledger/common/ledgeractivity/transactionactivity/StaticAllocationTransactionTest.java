@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import ledger.common.Ledger;
 import ledger.model.Balance;
 import ledger.model.Direction;
+import ledger.model.LedgerClock;
 import ledger.service.BalanceService;
 import ledger.service.LedgerService;
 import org.jboss.logging.Logger;
@@ -44,7 +45,7 @@ class StaticAllocationTransactionTest {
         var staticAllocationTransaction = new StaticAllocationTransaction(LOAN_ID, "Adjustment", ACTIVITY_TYPE,
                 ACTIVITY_ID, customSpreadOverride, Direction.CREDIT, LocalDateTime.now(), LocalDateTime.now(),
                 ledgerService);
-        staticAllocationTransaction.applyTo(ledger);
+        staticAllocationTransaction.applyTo(ledger, new LedgerClock());
         // Expect an entry to be added to the ledger having static allocation transaction
         var entries = ledger.getEntries();
         assertEquals(1, entries.size());

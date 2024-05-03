@@ -3,6 +3,7 @@ package ledger.common.ledgeractivity;
 import ledger.common.Ledger;
 import ledger.common.LedgerActivity;
 import ledger.model.GeneralLedgerActivity;
+import ledger.model.LedgerClock;
 import ledger.service.LedgerService;
 import lombok.Getter;
 import lombok.NonNull;
@@ -27,7 +28,8 @@ public class ReversalActivity extends LedgerActivity {
     }
 
     @Override
-    public void generateLedgerEntries(Ledger ledger) {
-        ledgerService.reverseLedgerActivity(this, ledger);
+    public void generateLedgerEntries(Ledger ledger,
+                                      LedgerClock ledgerClock) {
+        ledgerService.reverseLedgerActivity(this, ledger, ledgerClock);
     }
 }

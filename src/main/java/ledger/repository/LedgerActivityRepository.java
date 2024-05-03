@@ -28,15 +28,14 @@ public class LedgerActivityRepository {
                         .equals(type) && activity.getActivityId().equals(id)).findFirst().orElse(null);
     }
 
-    public List<LedgerActivity> findByLoanIdAndCreatedAfterButBefore(LedgerActivity ledgerActivity,
-                                                                     LocalDateTime createdAt) {
+    public List<LedgerActivity> findByLoanIdAndCreatedAfterButBeforeOrEqual(LedgerActivity ledgerActivity,
+                                                                            LocalDateTime createdAt) {
         return ledgerActivities.stream()
-                .filter(activity -> (activity.getLoanId().equals(ledgerActivity.getLoanId())
-                        && (activity.getCreatedAt().isAfter(ledgerActivity.getCreatedAt())
-                        || (activity.getCreatedAt().isEqual(ledgerActivity.getCreatedAt())
-                        && !activity.getActivityId()
-                        .equals(ledgerActivity.getActivityId())))) && activity.getCreatedAt().isBefore(createdAt))
-                .toList();
+                .filter(activity -> (activity.getLoanId().equals(ledgerActivity.getLoanId()) && (activity.getCreatedAt()
+                        .isAfter(ledgerActivity.getCreatedAt()) || (activity.getCreatedAt()
+                        .isEqual(ledgerActivity.getCreatedAt()) && !activity.getActivityId()
+                        .equals(ledgerActivity.getActivityId())))) && (activity.getCreatedAt()
+                        .isBefore(createdAt) || activity.getCreatedAt().isEqual(createdAt))).toList();
     }
 
     public LedgerActivity insert(LedgerActivity ledgerActivity) {
@@ -58,7 +57,7 @@ public class LedgerActivityRepository {
         if (la == null) {
             return new ArrayList<>();
         }
-        return findByLoanIdAndCreatedAfterButBefore(la, createdAt);
+        return findByLoanIdAndCreatedAfterButBeforeOrEqual(la, createdAt);
     }
 
     public List<LedgerActivity> getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBefore(String loanId,
@@ -67,8 +66,7 @@ public class LedgerActivityRepository {
         return ledgerActivities.stream()
                 .filter(activity -> activity.getLoanId().equals(loanId) && ((activity.getEffectiveAt()
                         .isAfter(effectiveAt)) || activity.getEffectiveAt()
-                        .isEqual(effectiveAt)) && (activity.getCreatedAt().isBefore(createdAt)))
-                .toList();
+                        .isEqual(effectiveAt)) && activity.getCreatedAt().isBefore(createdAt)).toList();
     }
 
     public void flush() {

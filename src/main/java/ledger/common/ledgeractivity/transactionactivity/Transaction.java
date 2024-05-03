@@ -4,6 +4,7 @@ import ledger.common.Ledger;
 import ledger.common.LedgerActivity;
 import ledger.common.TransactionSpreadStrategy;
 import ledger.model.GeneralLedgerActivity;
+import ledger.model.LedgerClock;
 import ledger.model.LedgerEntry;
 import ledger.service.LedgerService;
 import lombok.Getter;
@@ -44,7 +45,8 @@ public class Transaction extends LedgerActivity {
     }
 
     @Override
-    public void generateLedgerEntries(Ledger ledger) {
+    public void generateLedgerEntries(Ledger ledger,
+                                      LedgerClock ledgerClock) {
         var currentBalance = ledger.getCurrentBalance();
         var balance = transactionSpreadStrategy.applyTo(currentBalance);
         var change = balance.subtract(currentBalance);

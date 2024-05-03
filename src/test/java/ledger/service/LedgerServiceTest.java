@@ -7,10 +7,7 @@ import ledger.common.LedgerActivityFactory;
 import ledger.common.ledgeractivity.domain.InterestRate;
 import ledger.common.ledgeractivity.temporalactivity.StartOfDay;
 import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
-import ledger.model.BalanceComponent;
-import ledger.model.GeneralLedgerActivity;
-import ledger.model.LedgerActivityImpactExpectation;
-import ledger.model.LedgerEntry;
+import ledger.model.*;
 import ledger.repository.LedgerActivityRepository;
 import ledger.util.CSVUtil;
 import ledger.util.ObjectToCsvUtil;
@@ -100,18 +97,22 @@ class LedgerServiceTest {
         }).toList();
 
         // Act
-        ledgerService.applyLedgerActivities(ledger, ledgerActivities);
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock());
+
+        // Verify
+        checkLedgerAgainstLedgerActivityImpactExpectations(ledger, DATA_PATH + "applyLedgerActivities_test1" +
+                "/apply_ledger_activities_test1_expectation.csv");
 
         // Write to CSV for debugging only
         // TODO: Delete this line before committing
         objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR +
                 "applyLedgerActivities_test1_ledger_entries.csv");
 
-        // Assertions
-        var expectedLedger = initLedger("applyLedgerActivities_test1/ledger_entries.csv");
-
-        assertEquals(expectedLedger.getEntries().size(), ledger.getEntries().size());
-        assertEquals(expectedLedger.getCurrentBalance(), ledger.getCurrentBalance());
+//        // Assertions
+//        var expectedLedger = initLedger("applyLedgerActivities_test1/ledger_entries.csv");
+//
+//        assertEquals(expectedLedger.getEntries().size(), ledger.getEntries().size());
+//        assertEquals(expectedLedger.getCurrentBalance(), ledger.getCurrentBalance());
     }
 
     private @NotNull TemporalActivityContext getSampleTemporalActivityContext() throws IOException {
@@ -138,7 +139,7 @@ class LedgerServiceTest {
         var ledgerActivities = activities.stream()
                 .map(activity -> ledgerActivityFactory.create(activity, new TemporalActivityContext())).toList();
         ledgerActivities.forEach(ledgerActivityRepository::insert);
-        ledgerService.applyLedgerActivities(ledger, ledgerActivities);
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock());
 
         // Verify
         var entries = ledger.getEntries();
@@ -164,7 +165,7 @@ class LedgerServiceTest {
         ledgerActivities.forEach(ledgerActivityRepository::insert);
 
         // Act
-        ledgerService.applyLedgerActivities(ledger, ledgerActivities);
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock());
         return ledger;
     }
 
@@ -177,8 +178,16 @@ class LedgerServiceTest {
     @Test
     void testPastDatedPayment2() throws IOException {
         final var ledger = setupAndActForTestPastPayment("testPastDatedPayment/ledger_activities2.csv");
-        var impactExpectations = getImpactExpectations(DATA_PATH + "testPastDatedPayment" +
+
+        checkLedgerAgainstLedgerActivityImpactExpectations(ledger, DATA_PATH + "testPastDatedPayment" +
                 "/ledger_activities2_expectation.csv");
+
+        // TODO: Delete this line before committing
+        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR + "testPastDatedPayment2.csv");
+    }
+
+    private void checkLedgerAgainstLedgerActivityImpactExpectations(Ledger ledger, String impactExpectationsPath) {
+        var impactExpectations = getImpactExpectations(impactExpectationsPath);
         impactExpectations.forEach(expectation -> {
             var impact = expectation.getImpact();
             var actualImpact = ledgerService.calculateTotalImpact(ledger, expectation.activityType(),
@@ -187,7 +196,6 @@ class LedgerServiceTest {
                     "Activity type: " + expectation.activityId() + " Activity Type: " + expectation.activityType() +
                             " " + "Expectation: " + expectation.getImpact() + " Actual: " + actualImpact);
         });
-        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR + "testPastDatedPayment2.csv");
     }
 
     private List<LedgerActivityImpactExpectation> getImpactExpectations(String filePath) {
@@ -215,14 +223,14 @@ class LedgerServiceTest {
         var ledgerActivities = activities.stream()
                 .map(activity -> ledgerActivityFactory.create(activity, new TemporalActivityContext())).toList();
         ledgerActivities.forEach(ledgerActivityRepository::insert);
-        ledgerService.applyLedgerActivities(ledger, ledgerActivities);
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock());
 
         var temporalContext = getSampleTemporalActivityContext();
 
         // Act
         assertThrows(IllegalArgumentException.class, () -> {
             var activity = new StartOfDay(LOAN_ID, "SOD", LocalDateTime.parse("2024-03-01T00:00:00"), temporalContext);
-            activity.applyTo(ledger);
+            activity.applyTo(ledger, new LedgerClock());
         });
     }
 

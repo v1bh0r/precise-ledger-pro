@@ -6,6 +6,7 @@ import ledger.common.Ledger;
 import ledger.common.ledgeractivity.domain.InterestRate;
 import ledger.common.ledgeractivity.temporalactivity.command.DailyInterestCalculationCommand;
 import ledger.model.Balance;
+import ledger.model.LedgerClock;
 import ledger.service.BalanceService;
 import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
@@ -52,7 +53,7 @@ class StartOfDayTest {
         temporalContext.setProperty("currencyCode", CURRENCY);
 
         var sod = new StartOfDay(LOAN_ID, "SOD", LocalDate.now().atStartOfDay().plusHours(5), temporalContext);
-        sod.applyTo(ledger);
+        sod.applyTo(ledger, new LedgerClock());
         // Expect an entry to be added to the ledger having interest accrual at the start of the day
         var entries = ledger.getEntries();
         assertEquals(1, entries.size());

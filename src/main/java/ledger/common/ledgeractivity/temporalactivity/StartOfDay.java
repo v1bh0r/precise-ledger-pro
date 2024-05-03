@@ -4,6 +4,7 @@ import ledger.common.Ledger;
 import ledger.common.ledgeractivity.TemporalActivity;
 import ledger.common.ledgeractivity.temporalactivity.command.DailyInterestCalculationCommand;
 import ledger.model.GeneralLedgerActivity;
+import ledger.model.LedgerClock;
 import lombok.NonNull;
 
 import java.time.LocalDateTime;
@@ -48,7 +49,8 @@ public class StartOfDay extends TemporalActivity {
     }
 
     @Override
-    public void generateLedgerEntries(Ledger ledger) {
+    public void generateLedgerEntries(Ledger ledger,
+                                      LedgerClock ledgerClock) {
         var balance = ledger.getCurrentBalance();
         temporalActivityCommands.forEach(commandName -> {
             var nextLedgerEntryId = generateId();

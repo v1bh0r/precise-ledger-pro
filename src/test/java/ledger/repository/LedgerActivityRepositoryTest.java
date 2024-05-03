@@ -60,7 +60,8 @@ class LedgerActivityRepositoryTest {
     @Test
     void findByLoanIdAndCreatedAfterReturnsActivitiesWhenTheyExist() {
         var firstActivity = ledgerActivityRepository.getLedgerActivities().getFirst();
-        var results = ledgerActivityRepository.findByLoanIdAndCreatedAfterButBefore(firstActivity, LocalDateTime.now());
+        var results = ledgerActivityRepository.findByLoanIdAndCreatedAfterButBeforeOrEqual(firstActivity,
+                LocalDateTime.now());
         assertFalse(results.isEmpty());
         results.forEach(result -> {
             assertTrue(result.getCreatedAt().isAfter(firstActivity.getCreatedAt()) || result.getCreatedAt()
@@ -72,7 +73,8 @@ class LedgerActivityRepositoryTest {
     @Test
     void findByLoanIdAndCreatedAfterReturnsEmptyListWhenNoActivitiesExist() {
         var lastActivity = ledgerActivityRepository.getLedgerActivities().getLast();
-        var results = ledgerActivityRepository.findByLoanIdAndCreatedAfterButBefore(lastActivity, LocalDateTime.now());
+        var results = ledgerActivityRepository.findByLoanIdAndCreatedAfterButBeforeOrEqual(lastActivity,
+                LocalDateTime.now());
         assertTrue(results.isEmpty());
     }
 

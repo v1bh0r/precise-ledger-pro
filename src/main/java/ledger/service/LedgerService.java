@@ -5,12 +5,14 @@ import ledger.common.Ledger;
 import ledger.common.LedgerActivity;
 import ledger.common.ledgeractivity.ReversalActivity;
 import ledger.model.Balance;
+import ledger.model.LedgerClock;
 import ledger.model.LedgerEntry;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 
@@ -22,6 +24,28 @@ public class LedgerService {
     private static final String ADJUSTMENT = "ADJUSTMENT";
     @NonNull
     LoanService loanService;
+
+    /**
+     * Applies ledger activities to the ledger. If a backdated entry is encountered, it creates a retroactive ledger
+     * and syncs it back into the original ledger.
+     * In the case of a reversal, we do a rollback to the entry before the reversed activity and reapply all the
+     * activities that came after the reversed activity to the retroactive ledger.
+     * applyLedgerActivities is a recursive function that can call itself multiple times in the case of backdated
+     * entries and reversals.
+     * The recursion often happens from a distance. So, it might not be immediately obvious.
+     * The ledger clock is used to keep track of the current time when applying ledger activities.
+     * In the case of the recursion, we often go back and forth in time, so we need to keep track of the current time.
+     */
+    void applyLedgerActivities(Ledger ledger, List<LedgerActivity> ledgerActivities,
+                               LedgerClock ledgerClock) {
+        for (var ledgerActivity : ledgerActivities) {
+            if (ledgerActivity.isBackdatedEntry(ledger)) {
+                performBackdatedActivity(ledger, ledgerActivity, ledgerClock);
+            } else {
+                ledgerActivity.applyTo(ledger, ledgerClock);
+            }
+        }
+    }
 
     /**
      * Reconciles the ledger with another ledger containing
@@ -39,8 +63,8 @@ public class LedgerService {
      */
     void syncWithRetroactiveLedger(Ledger primaryLedger, Ledger retroactiveLedger, LocalDateTime currentTime,
                                    LocalDateTime adjustmentEffectiveAt, int forkIndex) {
-        List<LedgerEntry> retroactiveLedgerEntries = retroactiveLedger.getEntriesSortedByEffectiveAt();
-        var primaryLedgerEntries = primaryLedger.getEntriesSortedByEffectiveAt();
+        List<LedgerEntry> retroactiveLedgerEntries = retroactiveLedger.getEntriesSortedBy(LedgerEntry::getEffectiveAt);
+        var primaryLedgerEntries = primaryLedger.getEntriesSortedBy(LedgerEntry::getEffectiveAt);
         if (retroactiveLedgerEntries.isEmpty() || primaryLedgerEntries.isEmpty()) {
             return;
         }
@@ -92,28 +116,23 @@ public class LedgerService {
         System.out.println("primaryLedger size:" + primaryLedger.getEntries().size());
     }
 
-    void applyLedgerActivities(Ledger ledger, List<LedgerActivity> ledgerActivities) {
-        for (var ledgerActivity : ledgerActivities) {
-            if (ledgerActivity.isBackdatedEntry(ledger)) {
-                performBackdatedActivity(ledger, ledgerActivity);
-            } else {
-                ledgerActivity.applyTo(ledger);
-            }
-        }
-    }
-
-    private void performBackdatedActivity(Ledger ledger, LedgerActivity ledgerActivity) {
+    private void performBackdatedActivity(Ledger ledger, LedgerActivity ledgerActivity,
+                                          LedgerClock ledgerClock) {
         // Rollback the ledger to before backdated entry as a retroactive ledger
         var retroactiveLedger = ledger.rollbackToEntryBefore(ledgerActivity.getEffectiveAt());
         var forkIndex = retroactiveLedger.getEntries().size();
-        ledgerActivity.applyTo(retroactiveLedger);
+        ledgerActivity.applyTo(retroactiveLedger, ledgerClock);
         retroactiveLedger.getEntries().subList(forkIndex, retroactiveLedger.getEntries().size())
                 .forEach(ledger::addEntry);
         // Re-apply all the ledger activities that came after the back dated activity to the retroactive ledger
         var ledgerActivitiesEffectiveOnOrAfter =
                 loanService.getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBefore(ledger.getLoanId(),
-                        ledgerActivity.getEffectiveAt(), ledgerActivity.getCreatedAt());
-        applyLedgerActivities(retroactiveLedger, ledgerActivitiesEffectiveOnOrAfter);
+                                ledgerActivity.getEffectiveAt(), ledgerClock.getNow())
+                        // Sort by effectiveAt because at this point in time, we can end in an infinite loop if the
+                        // activities keep
+                        // getting processed as back-dated entries
+                        .stream().sorted(Comparator.comparing(LedgerActivity::getEffectiveAt)).toList();
+        applyLedgerActivities(retroactiveLedger, ledgerActivitiesEffectiveOnOrAfter, ledgerClock);
 
         // Sync the retroactive ledger back into the original ledger
         syncWithRetroactiveLedger(ledger, retroactiveLedger, LocalDateTime.now(), ledgerActivity.getCreatedAt(),
@@ -128,7 +147,8 @@ public class LedgerService {
      * Reverses a ledger activity such as a payment transaction. It is very common to experience such reversals
      * in the financial industry due to various reasons such as customer disputes, low funds, etc.
      */
-    public void reverseLedgerActivity(@NonNull ReversalActivity reversalActivity, @NonNull Ledger ledger) {
+    public void reverseLedgerActivity(@NonNull ReversalActivity reversalActivity, @NonNull Ledger ledger,
+                                      LedgerClock ledgerClock) {
         String ledgerActivityType = reversalActivity.getReversedActivityType();
         String ledgerActivityId = reversalActivity.getReversedActivityId();
 
@@ -142,8 +162,13 @@ public class LedgerService {
 
         // Re-apply all the ledger activities that came after the reversed activity to the retroactive ledger
         var ledgerActivities = loanService.getLedgerActivitiesCreatedSinceButBeforeCreatedAt(ledger.getLoanId(),
-                ledgerActivityType, ledgerActivityId, reversalActivity.getCreatedAt());
-        applyLedgerActivities(retroactiveLedger, ledgerActivities);
+                ledgerActivityType, ledgerActivityId, ledgerClock.getNow());
+        // Filter out the reversal activity itself if encountered to avoid infinite recursion
+        var stream = ledgerActivities.stream().filter(activity -> !activity.equals(reversalActivity));
+        // Sort by effectiveAt because at this point in time, we can end in an infinite loop if the activities keep
+        // getting processed as back-dated entries
+        ledgerActivities = stream.sorted(Comparator.comparing(LedgerActivity::getEffectiveAt)).toList();
+        applyLedgerActivities(retroactiveLedger, ledgerActivities, ledgerClock);
 
         // Sync the retroactive ledger back into the original ledger
         syncWithRetroactiveLedger(ledger, retroactiveLedger, LocalDateTime.now(), reversalActivity.getCreatedAt(),

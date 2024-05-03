@@ -1,5 +1,7 @@
 package ledger.common;
 
+import ledger.model.LedgerClock;
+import ledger.model.LedgerEntry;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NonNull;
@@ -27,7 +29,17 @@ public abstract class LedgerActivity {
                 activityId, effectiveAt, createdAt);
     }
 
-    public void applyTo(Ledger ledger) {
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+        if (!(o instanceof LedgerActivity other)) {
+            return false;
+        }
+        return activityType.equals(other.activityType) && activityId.equals(other.activityId);
+    }
+
+    public void applyTo(Ledger ledger, LedgerClock ledgerClock) {
         if (isBackdatedEntry(ledger)) {
             /*
              * We cannot add backdated entries to the ledger from here.
@@ -39,11 +51,12 @@ public abstract class LedgerActivity {
             throw new IllegalArgumentException(String.format("LoanId: %s ActivityType: %s ActivityId: %s ; Cannot " + "add" + " backdated entries to the ledger", loanId, activityType, activityId));
 
         }
-        generateLedgerEntries(ledger);
+        generateLedgerEntries(ledger, ledgerClock);
+        ledgerClock.advanceTime(this.createdAt);
     }
 
     public boolean isBackdatedEntry(Ledger ledger) {
-        var entries = ledger.getEntriesSortedByEffectiveAt();
+        var entries = ledger.getEntriesSortedBy(LedgerEntry::getEffectiveAt);
         if (entries.isEmpty()) {
             return false;
         } else {
@@ -54,7 +67,9 @@ public abstract class LedgerActivity {
     /**
      * Adds one or more Ledger Activities to the ledger depending on the type of Ledger Activity
      *
-     * @param ledger the ledger to which the Ledger Activities are added
+     * @param ledger      the ledger to which the Ledger Activities are added
+     * @param ledgerClock the clock that keeps track of the current time
      */
-    protected abstract void generateLedgerEntries(Ledger ledger);
+    protected abstract void generateLedgerEntries(Ledger ledger,
+                                                  LedgerClock ledgerClock);
 }

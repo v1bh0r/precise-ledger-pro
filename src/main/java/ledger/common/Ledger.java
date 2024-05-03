@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Getter
@@ -27,11 +29,9 @@ public class Ledger implements Cloneable {
         newEntry.updateBalances(this.getCurrentBalance());
         entries.add(newEntry);
     }
-
-    public List<LedgerEntry> getEntriesSortedByEffectiveAt() {
-        var newEntries = new ArrayList<>(entries);
-        newEntries.sort(Comparator.comparing(LedgerEntry::getEffectiveAt));
-        return newEntries;
+    
+    public List<LedgerEntry> getEntriesSortedBy(Function<LedgerEntry, LocalDateTime> sorter) {
+        return entries.stream().sorted(Comparator.comparing(sorter)).collect(Collectors.toList());
     }
 
     // TODO: Test that the new ledger is a deep clone of the original ledger
@@ -68,7 +68,7 @@ public class Ledger implements Cloneable {
 
     public Balance getBalanceAt(LocalDateTime effectiveAt) {
         // Find the last entry that is effective before the given effectiveAt
-        var lastEntryBeforeEffectiveAt = getEntriesSortedByEffectiveAt().stream()
+        var lastEntryBeforeEffectiveAt = getEntriesSortedBy(LedgerEntry::getEffectiveAt).stream()
                 .filter(entry -> !entry.getEffectiveAt().isAfter(effectiveAt)).reduce((first, second) -> second)
                 .orElse(null);
 
