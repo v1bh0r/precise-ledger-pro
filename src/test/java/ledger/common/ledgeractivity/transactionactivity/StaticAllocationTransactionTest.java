@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import ledger.common.Ledger;
 import ledger.model.Balance;
 import ledger.model.Direction;
+import ledger.model.LedgerClock;
 import ledger.service.BalanceService;
 import ledger.service.LedgerService;
 import org.jboss.logging.Logger;
@@ -14,7 +15,7 @@ import javax.money.Monetary;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
-import static ledger.common.MonetaryUtil.monetaryAmount;
+import static ledger.common.MonetaryUtil.toMonetaryAmount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @QuarkusTest
@@ -41,15 +42,17 @@ class StaticAllocationTransactionTest {
     void applyTo() {
         var ledger = createLedger(balanceService.createBalance(10000, 100, 10, 0, CURRENCY));
         var customSpreadOverride = balanceService.createBalance(5000, 50, 5, 0, CURRENCY);
-        var staticAllocationTransaction = new StaticAllocationTransaction(LOAN_ID, "Adjustment", ACTIVITY_TYPE, ACTIVITY_ID, customSpreadOverride, Direction.CREDIT, LocalDateTime.now(), LocalDateTime.now(), ledgerService);
-        staticAllocationTransaction.applyTo(ledger);
+        var staticAllocationTransaction = new StaticAllocationTransaction(LOAN_ID, "Adjustment", ACTIVITY_TYPE,
+                ACTIVITY_ID, customSpreadOverride, Direction.CREDIT, LocalDateTime.now(), LocalDateTime.now(),
+                ledgerService);
+        staticAllocationTransaction.applyTo(ledger, new LedgerClock());
         // Expect an entry to be added to the ledger having static allocation transaction
         var entries = ledger.getEntries();
         assertEquals(1, entries.size());
         var entry = entries.getFirst();
         var balance = entry.getBalance();
-        assertEquals(monetaryAmount(15000), balance.principal());
-        assertEquals(monetaryAmount(150), balance.interest().with(Monetary.getDefaultRounding()));
+        assertEquals(toMonetaryAmount(15000), balance.principal());
+        assertEquals(toMonetaryAmount(150), balance.interest().with(Monetary.getDefaultRounding()));
         ledger.log(log);
     }
 }

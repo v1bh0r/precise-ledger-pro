@@ -1,4 +1,4 @@
-loanId,entryId,entryType,amount,principal,interest,fee,excessBalance,principalBalance,interestBalance,feeBalance,excessBalance,effectiveAt,createdAt,sourceLedgerActivityType,sourceLedgerActivityId
+loanId,entryId,entryType,amount,principal,interest,fee,excess,principalBalance,interestBalance,feeBalance,excessBalance,effectiveAt,createdAt,sourceLedgerActivityType,sourceLedgerActivityId
 1234,1,Disbursal,1000000,1000000,0,0,0,1000000,0,0,0,2024-03-01T00:00:00,2024-03-01T00:00:00,Disbursal,123
 1234,2,Interest Accrual,273.97,0,273.97,0,0,1000000,273.97,0,0,2024-03-02T00:00:00,2024-03-02T00:00:00,SOD_INT,32
 1234,3,Interest Accrual,273.97,0,273.97,0,0,1000000,547.95,0,0,2024-03-03T00:00:00,2024-03-03T00:00:00,SOD_INT,33
@@ -14,4 +14,4 @@ loanId,entryId,entryType,amount,principal,interest,fee,excessBalance,principalBa
 1234,13,Adjustment,0,547.95,-547.95,0,0,992643.84,-547.94,0,0,2024-03-03T14:00:00,2024-03-05T15:00:00,Payment,789
 1234,14,Adjustment,-0.94,0,-0.94,0,0,992643.84,-548.88,0,0,2024-03-04T00:00:00,2024-03-05T15:00:00,SOD_INT,34
 1234,15,Adjustment,-0.94,0,-0.94,0,0,992643.84,-549.82,0,0,2024-03-05T00:00:00,2024-03-05T15:00:00,SOD_INT,35
-1234,16,Adjustment,0,-549.84,549.84,0,0,996094,0.02,0,0,2024-04-08T11:20:10,2024-04-08T11:20:10,Payment,456
+1234,16,Adjustment,0,-549.84,549.84,0,0,992094,0.02,0,0,2024-04-08T11:20:10,2024-04-08T11:20:10,Payment,456

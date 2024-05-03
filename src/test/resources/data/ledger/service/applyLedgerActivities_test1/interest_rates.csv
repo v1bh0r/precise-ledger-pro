@@ -1,2 +1,2 @@
-effectiveAt,rate
-2024-03-01T00:00:00,0.10
+effectiveAt,rate,loanId
+2024-03-01T00:00:00,0.10,1234

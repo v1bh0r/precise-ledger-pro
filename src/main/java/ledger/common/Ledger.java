@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Getter
@@ -23,20 +25,20 @@ public class Ledger implements Cloneable {
     private String currency;
 
     public void addEntry(LedgerEntry entry) {
-        entries.add(entry);
+        var newEntry = entry.clone();
+        newEntry.updateBalances(this.getCurrentBalance());
+        entries.add(newEntry);
     }
-
-    public List<LedgerEntry> getEntriesSortedByEffectiveAt() {
-        var newEntries = new ArrayList<>(entries);
-        newEntries.sort(Comparator.comparing(LedgerEntry::getEffectiveAt));
-        return newEntries;
+    
+    public List<LedgerEntry> getEntriesSortedBy(Function<LedgerEntry, LocalDateTime> sorter) {
+        return entries.stream().sorted(Comparator.comparing(sorter)).collect(Collectors.toList());
     }
 
     // TODO: Test that the new ledger is a deep clone of the original ledger
     public Ledger rollbackToEntryBefore(LocalDateTime effectiveAt) {
         // Get entries subset that are effective before the given effectiveAt
         var newEntries = entries.stream().filter(entry -> !entry.getEffectiveAt().isAfter(effectiveAt)).toList();
-        return new Ledger(loanId, startBalance, newEntries, currency);
+        return new Ledger(loanId, startBalance, new ArrayList<>(newEntries), currency);
     }
 
     // TODO: Test that the new ledger is a deep clone of the original ledger
@@ -64,6 +66,19 @@ public class Ledger implements Cloneable {
         }
     }
 
+    public Balance getBalanceAt(LocalDateTime effectiveAt) {
+        // Find the last entry that is effective before the given effectiveAt
+        var lastEntryBeforeEffectiveAt = getEntriesSortedBy(LedgerEntry::getEffectiveAt).stream()
+                .filter(entry -> !entry.getEffectiveAt().isAfter(effectiveAt)).reduce((first, second) -> second)
+                .orElse(null);
+
+        if (lastEntryBeforeEffectiveAt == null) {
+            return startBalance;
+        } else {
+            return lastEntryBeforeEffectiveAt.getBalance();
+        }
+    }
+
     public void log(Logger log) {
         log.info("Ledger for loanId: " + loanId);
         entries.forEach(entry -> log.info(entry.toString()));
@@ -74,12 +89,18 @@ public class Ledger implements Cloneable {
         var entries = this.getEntries();
         AtomicReference<Balance> totalImpact =
                 new AtomicReference<>(BalanceService.createZeroBalance(this.getCurrency()));
-        entries.stream()
-                .filter(entry -> entry.getSourceLedgerActivityType()
-                        .equals(activityType) && entry.getSourceLedgerActivityId().equals(activityId))
-                .forEach(entry -> {
-                    totalImpact.set(totalImpact.get().add(entry.getBalanceChange()));
-                });
-        return totalImpact.get();
+
+        var matchingEntries = entries.stream().filter(entry -> entry.getSourceLedgerActivityType()
+                .equals(activityType) && entry.getSourceLedgerActivityId().equals(activityId)).toList();
+
+        if (matchingEntries.isEmpty()) {
+            return null;
+        } else {
+            matchingEntries.forEach(entry -> {
+                totalImpact.set(totalImpact.get().add(entry.getBalanceChange()));
+            });
+            return totalImpact.get();
+        }
     }
+
 }

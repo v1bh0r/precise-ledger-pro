@@ -1,4 +1,4 @@
-loanId,entryId,entryType,amount,principal,interest,fee,excessBalance,principalBalance,interestBalance,feeBalance,excessBalance,effectiveAt,createdAt,sourceLedgerActivityType,sourceLedgerActivityId
+loanId,entryId,entryType,amount,principal,interest,fee,excess,principalBalance,interestBalance,feeBalance,excessBalance,effectiveAt,createdAt,sourceLedgerActivityType,sourceLedgerActivityId
 1234,1,Disbursal,1000000.00,1000000.00,0,0,0,1000000.00,0,0,0,2024-03-01T00:00:00,2024-03-01T00:00:00,Disbursal,123
 1234,2,Interest Accrual,273.97,0,273.97,0,0,1000000.00,273.97,0,0,2024-03-02T00:00:00,2024-03-02T00:00:00,SOD_INT,32
 1234,3,Interest Accrual,273.97,0,273.97,0,0,1000000.00,547.95,0,0,2024-03-03T00:00:00,2024-03-03T00:00:00,SOD_INT,33
