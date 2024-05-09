@@ -148,7 +148,7 @@ public class LedgerService {
      * in the financial industry due to various reasons such as customer disputes, low funds, etc.
      */
     public void reverseLedgerActivity(@NonNull ReversalActivity reversalActivity, @NonNull Ledger ledger,
-                                      LedgerClock ledgerClock) {
+                                      @NotNull LedgerClock ledgerClock) {
         String ledgerActivityType = reversalActivity.getReversedActivityType();
         String ledgerActivityId = reversalActivity.getReversedActivityId();
 

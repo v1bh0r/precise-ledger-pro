@@ -42,3 +42,9 @@ nb-configuration.xml
 # Plugin directory
 /.quarkus/cli/plugins/
 /test-output/
+
+# Jenv
+.java-version
+
+# Reports
+htmlReport

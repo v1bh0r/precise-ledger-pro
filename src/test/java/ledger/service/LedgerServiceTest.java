@@ -4,6 +4,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import ledger.common.Ledger;
 import ledger.common.LedgerActivityFactory;
+import ledger.common.ledgeractivity.ReversalActivity;
 import ledger.common.ledgeractivity.domain.InterestRate;
 import ledger.common.ledgeractivity.temporalactivity.StartOfDay;
 import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
@@ -25,6 +26,8 @@ import java.util.List;
 import static ledger.common.MonetaryUtil.toDouble;
 import static ledger.service.BalanceService.createZeroBalance;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @QuarkusTest
 class LedgerServiceTest {
@@ -231,6 +234,49 @@ class LedgerServiceTest {
         assertThrows(IllegalArgumentException.class, () -> {
             var activity = new StartOfDay(LOAN_ID, "SOD", LocalDateTime.parse("2024-03-01T00:00:00"), temporalContext);
             activity.applyTo(ledger, new LedgerClock());
+        });
+    }
+
+    @Test
+    void shouldThrowRuntimeExceptionWhenReversedActivityHasNoLedgerEntries() {
+        // Setup
+        var ledger = mock(Ledger.class);
+        var reversalActivity = mock(ReversalActivity.class);
+        when(reversalActivity.getReversedActivityType()).thenReturn("");
+        when(reversalActivity.getReversedActivityId()).thenReturn("");
+
+        // Act
+        assertThrows(RuntimeException.class, () -> {
+            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock());
+        });
+    }
+
+    @Test
+    void shouldThrowRuntimeExceptionWhenReversedActivityHasNoLedgerEntries2() {
+        // Setup
+        var ledger = mock(Ledger.class);
+        var reversalActivity = mock(ReversalActivity.class);
+        when(reversalActivity.getReversedActivityType()).thenReturn("");
+        when(reversalActivity.getReversedActivityId()).thenReturn("asdfasdfds");
+        when(ledger.calculateTotalImpact("Asdfasdf", "asdfasdfds")).thenReturn(null);
+
+        // Act
+        assertThrows(RuntimeException.class, () -> {
+            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock());
+        });
+    }
+
+    @Test
+    void shouldThrowRuntimeExceptionWhenReversedActivityHasNoLedgerEntries3() {
+        // Setup
+        var ledger = mock(Ledger.class);
+        var reversalActivity = mock(ReversalActivity.class);
+        when(reversalActivity.getReversedActivityType()).thenReturn("Asdfasdf");
+        when(reversalActivity.getReversedActivityId()).thenReturn("");
+
+        // Act
+        assertThrows(RuntimeException.class, () -> {
+            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock());
         });
     }
 
