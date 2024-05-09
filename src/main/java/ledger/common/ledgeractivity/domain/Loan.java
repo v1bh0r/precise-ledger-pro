@@ -3,14 +3,21 @@ package ledger.common.ledgeractivity.domain;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import lombok.Getter;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.UuidGenerator;
+
+import java.util.UUID;
+
 
 @Entity
+@Data
+@EqualsAndHashCode(callSuper = true)
 public class Loan extends PanacheEntityBase {
     @Id
-    String id;
-    @Getter
+    @UuidGenerator
+    UUID id;
     Integer daysInYear;
-    @Getter
-    String currencyCode;
+    String currencyCode = "USD";
+    String externalId;
 }

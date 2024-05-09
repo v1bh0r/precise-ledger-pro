@@ -1,0 +1,169 @@
+openapi: 3.1.0
+x-stoplight:
+  id: u57ndkzp6cqn1
+info:
+  title: Ledger Service
+  version: '1.0'
+  contact:
+    email: support@preciseledger.pro
+    name: Support
+    url: 'https://preciseledger.pro/support'
+  summary: Precise Ledger Pro
+  description: 'It is a loan ledger system leveraging event-streaming to handle transactions, reversals, and back-dated entries dynamically. The Dynamic Event-Streamed Auditable Ledger solves the problem of accurately managing and auditing ledgers with complex transactions, including back-dated entries and reversals, ensuring real-time integrity and historical accuracy.'
+  termsOfService: 'https://preciseledger.pro/tos'
+servers:
+  - url: 'http://localhost:8080'
+paths:
+  /loans:
+    post:
+      summary: Create Loan
+      operationId: post-loans
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Loan'
+                    x-stoplight:
+                      id: cje3pzi9ayg97
+                  - type: object
+                    x-stoplight:
+                      id: ynh2ma0v7auc5
+                    properties:
+                      _links:
+                        type: object
+                        x-stoplight:
+                          id: 7er3i4n04ulat
+                        properties:
+                          self:
+                            $ref: '#/components/schemas/HateOASUri'
+                            x-stoplight:
+                              id: 0wqum8k1610ln
+                          ledger:
+                            $ref: '#/components/schemas/HateOASUri'
+                            x-stoplight:
+                              id: bfsgq6wfyuc2m
+                          interest-rates:
+                            $ref: '#/components/schemas/HateOASUri'
+                            x-stoplight:
+                              id: 7s4hs5iui13kp
+      description: Create a new loan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Loan'
+      tags:
+        - Loan
+components:
+  schemas:
+    Loan:
+      title: Loan
+      x-stoplight:
+        id: n7mwd77b3gul6
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        externalId:
+          type: string
+          x-stoplight:
+            id: 7ru6pgebnpoqc
+      required:
+        - id
+    InterestRate:
+      title: InterestRate
+      x-stoplight:
+        id: mxc9y6iprb566
+      type: object
+      properties:
+        id:
+          type: string
+    LedgerActivity:
+      title: LedgerActivity
+      x-stoplight:
+        id: mc5hb3bmo1jbe
+      type: object
+      properties:
+        id:
+          type: string
+    HateOASUri:
+      title: HateOASUri
+      x-stoplight:
+        id: ueumtw3mcur07
+      type: object
+      properties:
+        uri:
+          x-stoplight:
+            id: 9crp69cs1cyuf
+          type: string
+          format: uri
+      required:
+        - uri
+    Ledger:
+      title: Ledger
+      x-stoplight:
+        id: bv93dpd8bem68
+      type: object
+      properties:
+        loanId:
+          type: string
+          x-stoplight:
+            id: s7ho3ruw2ywot
+          format: uuid
+        currency:
+          type: string
+          x-stoplight:
+            id: w0qmd569kkykf
+          example: USD
+        startingBalance:
+          $ref: '#/components/schemas/Balance'
+          x-stoplight:
+            id: i77u81j0j9xji
+    Balance:
+      title: Balance
+      x-stoplight:
+        id: dbl1haovxdvna
+      type: object
+      properties:
+        principal:
+          $ref: '#/components/schemas/CurrencyAmount'
+          x-stoplight:
+            id: gratvj0d9jg6o
+        interest:
+          $ref: '#/components/schemas/CurrencyAmount'
+          x-stoplight:
+            id: 6ht2szzo5enj8
+        fee:
+          $ref: '#/components/schemas/CurrencyAmount'
+          x-stoplight:
+            id: r4l3lyc8t3ug0
+        excess:
+          $ref: '#/components/schemas/CurrencyAmount'
+          x-stoplight:
+            id: gkr5in14bw8ee
+      examples:
+        - principal: '100.30'
+          interest: '20.41'
+          fee: '10.0'
+          excess: '0.0'
+    CurrencyAmount:
+      title: CurrencyAmount
+      x-stoplight:
+        id: ypc92gxo7pev7
+      type: number
+      format: double
+      minimum: 0
+    LedgerEntry:
+      title: LedgerEntry
+      x-stoplight:
+        id: 54aslcmr23ziw
+      type: object
+      properties:
+        id:
+          type: string
+tags:
+  - name: Loan
