@@ -1,5 +1,7 @@
 # Precise Ledger Pro
 
+[![Java CI with Maven](https://github.com/v1bh0r/precise-ledger-pro/actions/workflows/maven.yml/badge.svg)](https://github.com/v1bh0r/precise-ledger-pro/actions/workflows/maven.yml)
+
 ## Development
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
