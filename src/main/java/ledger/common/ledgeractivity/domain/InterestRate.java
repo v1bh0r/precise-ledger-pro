@@ -2,15 +2,16 @@ package ledger.common.ledgeractivity.domain;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.commons.csv.CSVRecord;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 @Entity
 @Getter
@@ -18,8 +19,8 @@ import java.time.format.DateTimeFormatter;
 @NoArgsConstructor
 public class InterestRate extends PanacheEntityBase {
     @Id
-    @GeneratedValue
-    String id;
+    @UuidGenerator
+    UUID id;
     String loanId;
     Float rate;
     LocalDateTime effectiveAt;

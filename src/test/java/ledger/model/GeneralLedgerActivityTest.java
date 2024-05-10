@@ -30,7 +30,7 @@ class GeneralLedgerActivityTest {
         when(record.get("reversalActivityId")).thenReturn("9012");
         when(record.get("amount")).thenReturn("100.0");
         when(record.get("effectiveAt")).thenReturn("2022-01-01T00:00:00");
-        when(record.get("createdAt")).thenReturn("2022-01-01T00:00:00");
+        when(record.get("transactionTime")).thenReturn("2022-01-01T00:00:00");
         when(record.get("principal")).thenReturn("100.0");
         when(record.get("interest")).thenReturn("10.0");
         when(record.get("fee")).thenReturn("5.0");
@@ -51,7 +51,7 @@ class GeneralLedgerActivityTest {
         assertEquals(LocalDateTime.parse("2022-01-01T00:00:00", DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 activity.getEffectiveAt());
         assertEquals(LocalDateTime.parse("2022-01-01T00:00:00", DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                activity.getCreatedAt());
+                activity.getTransactionTime());
         assertEquals(Money.of(100.0, getDefaultCurrencyCode()), activity.getPrincipal());
         assertEquals(Money.of(10.0, getDefaultCurrencyCode()), activity.getInterest());
         assertEquals(Money.of(5.0, getDefaultCurrencyCode()), activity.getFee());

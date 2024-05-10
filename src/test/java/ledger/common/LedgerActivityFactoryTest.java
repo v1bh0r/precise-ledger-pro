@@ -41,7 +41,7 @@ class LedgerActivityFactoryTest {
                 .transactionStrategy("ComputationalSpread")
                 .spread("IPF")
                 .effectiveAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
+                .transactionTime(LocalDateTime.now())
                 .build();
 
 
@@ -58,7 +58,7 @@ class LedgerActivityFactoryTest {
                 .activityType("StartOfDay")
                 .commonName("Start of Day")
                 .effectiveAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
+                .transactionTime(LocalDateTime.now())
                 .build();
 
         var ledger = createBlankLedger(LOAN_ID);
@@ -76,7 +76,7 @@ class LedgerActivityFactoryTest {
                 .reversalActivityType("Transaction")
                 .commonName("Payment reversal")
                 .effectiveAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now())
+                .transactionTime(LocalDateTime.now())
                 .reversalActivityId("1")
                 .build();
 

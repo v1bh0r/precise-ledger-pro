@@ -1,23 +1,30 @@
 package ledger.model;
 
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import ledger.common.MonetaryUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.apache.commons.csv.CSVRecord;
+import org.hibernate.annotations.UuidGenerator;
 
 import javax.money.MonetaryAmount;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+@Entity
 @Getter
 @Builder
 @AllArgsConstructor
-public class GeneralLedgerActivity {
-
-    private String loanId;
-
+@NoArgsConstructor
+public class GeneralLedgerActivity extends PanacheEntityBase {
+    @Id
+    @UuidGenerator
     private String activityId;
+    private String loanId;
 
     private String commonName;
 
@@ -25,13 +32,13 @@ public class GeneralLedgerActivity {
 
     private String transactionStrategy;
 
-    private MonetaryAmount principal;
+    private Double principal;
 
-    private MonetaryAmount interest;
+    private Double interest;
 
-    private MonetaryAmount fee;
+    private Double fee;
 
-    private MonetaryAmount excess;
+    private Double excess;
 
     private String direction;
 
@@ -40,13 +47,52 @@ public class GeneralLedgerActivity {
     private String reversalActivityType;
 
     private String reversalActivityId;
+    LocalDateTime effectiveAt;
+    LocalDateTime transactionTime;
 
     @Builder.Default
-    private MonetaryAmount amount = MonetaryUtil.zero();
+    private Double amount = 0.0;
 
-    LocalDateTime effectiveAt;
+    public MonetaryAmount getAmount() {
+        return MonetaryUtil.toMonetaryAmount(amount);
+    }
 
-    LocalDateTime createdAt;
+
+    public MonetaryAmount getPrincipal() {
+        return MonetaryUtil.toMonetaryAmount(principal);
+    }
+
+    public MonetaryAmount getInterest() {
+        return MonetaryUtil.toMonetaryAmount(interest);
+    }
+
+    public MonetaryAmount getFee() {
+        return MonetaryUtil.toMonetaryAmount(fee);
+    }
+
+    public MonetaryAmount getExcess() {
+        return MonetaryUtil.toMonetaryAmount(excess);
+    }
+
+    public void setAmount(MonetaryAmount amount) {
+        this.amount = amount.getNumber().doubleValue();
+    }
+
+    public void setPrincipal(MonetaryAmount principal) {
+        this.principal = principal.getNumber().doubleValue();
+    }
+
+    public void setInterest(MonetaryAmount interest) {
+        this.interest = interest.getNumber().doubleValue();
+    }
+
+    public void setFee(MonetaryAmount fee) {
+        this.fee = fee.getNumber().doubleValue();
+    }
+
+    public void setExcess(MonetaryAmount excess) {
+        this.excess = excess.getNumber().doubleValue();
+    }
 
     @SuppressWarnings("unused")
     public GeneralLedgerActivity(CSVRecord record) {
@@ -59,15 +105,15 @@ public class GeneralLedgerActivity {
         this.spread = record.get("spread");
         this.reversalActivityType = record.get("reversalActivityType");
         this.reversalActivityId = record.get("reversalActivityId");
-        this.amount = MonetaryUtil.toMonetaryAmount(record.get("amount"));
+        this.setAmount(MonetaryUtil.toMonetaryAmount(record.get("amount")));
         this.effectiveAt = LocalDateTime.parse(record.get("effectiveAt"),
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T" + "'HH:mm:ss"));
-        this.createdAt = LocalDateTime.parse(record.get("createdAt"), DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"
-                + ":ss"));
+        this.transactionTime = LocalDateTime.parse(record.get("transactionTime"),
+                DateTimeFormatter.ofPattern("yyyy" + "-MM-dd'T" + "'HH:mm" + ":ss"));
 
-        this.principal = MonetaryUtil.toMonetaryAmount(record.get("principal"));
-        this.interest = MonetaryUtil.toMonetaryAmount(record.get("interest"));
-        this.fee = MonetaryUtil.toMonetaryAmount(record.get("fee"));
-        this.excess = MonetaryUtil.toMonetaryAmount(record.get("excess"));
+        this.setPrincipal(MonetaryUtil.toMonetaryAmount(record.get("principal")));
+        this.setInterest(MonetaryUtil.toMonetaryAmount(record.get("interest")));
+        this.setFee(MonetaryUtil.toMonetaryAmount(record.get("fee")));
+        this.setExcess(MonetaryUtil.toMonetaryAmount(record.get("excess")));
     }
 }

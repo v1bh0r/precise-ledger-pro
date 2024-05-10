@@ -38,7 +38,7 @@ public class Transaction extends LedgerActivity {
     public Transaction(@NonNull GeneralLedgerActivity generalLedgerActivity, @NonNull LedgerService ledgerService) {
         super(generalLedgerActivity.getLoanId(), generalLedgerActivity.getCommonName(),
                 generalLedgerActivity.getActivityType(), generalLedgerActivity.getActivityId(),
-                generalLedgerActivity.getEffectiveAt(), generalLedgerActivity.getCreatedAt());
+                generalLedgerActivity.getEffectiveAt(), generalLedgerActivity.getTransactionTime());
         this.amount = generalLedgerActivity.getAmount();
         this.transactionSpreadStrategy = TransactionSpreadStrategyFactory.create(generalLedgerActivity);
         this.ledgerService = ledgerService;

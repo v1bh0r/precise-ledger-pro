@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static ledger.common.MonetaryUtil.toMonetaryAmount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -45,7 +46,7 @@ class StartOfDayTest {
 
         var interestRate = new InterestRate();
         interestRate.setRate(0.10f);
-        interestRate.setId("1");
+        interestRate.setId(UUID.randomUUID());
         interestRate.setEffectiveAt(LocalDateTime.MIN);
         interestRate.setLoanId(LOAN_ID);
         temporalContext.setProperty("interestRates", List.of(interestRate));

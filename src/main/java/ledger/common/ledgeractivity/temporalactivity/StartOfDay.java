@@ -34,7 +34,7 @@ public class StartOfDay extends TemporalActivity {
         super(generalLedgerActivity.getLoanId(), generalLedgerActivity.getCommonName(),
                 generalLedgerActivity.getActivityType(),
                 generalLedgerActivity.getActivityId(), generalLedgerActivity.getEffectiveAt(),
-                generalLedgerActivity.getCreatedAt());
+                generalLedgerActivity.getTransactionTime());
         this.sodDateTime = generalLedgerActivity.getEffectiveAt();
         this.sodContext = temporalActivityContext == null ? new TemporalActivityContext() : temporalActivityContext;
 

@@ -29,7 +29,7 @@ public class CSVUtil<T> {
         return parse(reader, type);
     }
 
-    private List<T> parse(Reader reader, Class<T> type) {
+    public List<T> parse(Reader reader, Class<T> type) {
         List<T> recordsList = new ArrayList<>();
         try (CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT.withFirstRecordAsHeader()
                 .withIgnoreHeaderCase().withTrim())) {

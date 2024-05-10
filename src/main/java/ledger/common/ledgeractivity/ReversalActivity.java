@@ -21,7 +21,7 @@ public class ReversalActivity extends LedgerActivity {
                             @NonNull LedgerService ledgerService) {
         super(generalLedgerActivity.getLoanId(), generalLedgerActivity.getCommonName(),
                 generalLedgerActivity.getActivityType(), generalLedgerActivity.getActivityId(),
-                generalLedgerActivity.getEffectiveAt(), generalLedgerActivity.getCreatedAt());
+                generalLedgerActivity.getEffectiveAt(), generalLedgerActivity.getTransactionTime());
         this.reversedActivityType = generalLedgerActivity.getReversalActivityType();
         this.reversedActivityId = generalLedgerActivity.getReversalActivityId();
         this.ledgerService = ledgerService;
