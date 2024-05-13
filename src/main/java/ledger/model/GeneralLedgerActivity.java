@@ -3,6 +3,7 @@ package ledger.model;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import ledger.common.LedgerActivity;
 import ledger.common.MonetaryUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 public class GeneralLedgerActivity extends PanacheEntityBase {
     @Id
     @UuidGenerator
+    private String id;
     private String activityId;
     private String loanId;
 
@@ -115,5 +117,9 @@ public class GeneralLedgerActivity extends PanacheEntityBase {
         this.setInterest(MonetaryUtil.toMonetaryAmount(record.get("interest")));
         this.setFee(MonetaryUtil.toMonetaryAmount(record.get("fee")));
         this.setExcess(MonetaryUtil.toMonetaryAmount(record.get("excess")));
+    }
+
+    public boolean equals(LedgerActivity other) {
+        return activityType.equals(other.getActivityType()) && activityId.equals(other.getActivityId());
     }
 }

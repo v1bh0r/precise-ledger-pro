@@ -2,6 +2,7 @@ package ledger.service;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import ledger.common.Ledger;
 import ledger.common.LedgerActivityFactory;
 import ledger.common.ledgeractivity.ReversalActivity;
@@ -52,17 +53,20 @@ class LedgerServiceTest {
     private static final String DATA_PATH = "data/ledger/service/";
 
     @BeforeEach
+    @Transactional
     void setUp() {
         objectToCsvUtil = new ObjectToCsvUtil<>(log);
     }
 
     @AfterEach
+    @Transactional
     void tearDown() {
         objectToCsvUtil = null;
-        ledgerActivityRepository.flush();
+        ledgerActivityRepository.deleteAll();
     }
 
     @Test
+    @Transactional
     void syncWithRetroactiveLedger_test1() throws IOException {
         // TODO: The test fails sometimes because of an issue with CSV parsing.
         //   I haven't been able to figure out why this happens and why only some times
@@ -85,6 +89,7 @@ class LedgerServiceTest {
     }
 
     @Test
+    @Transactional
     void applyLedgerActivities_test1() throws IOException {
         // Setup
 
@@ -94,13 +99,13 @@ class LedgerServiceTest {
         var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + "applyLedgerActivities_test1" +
                 "/ledger_activities.csv", GeneralLedgerActivity.class);
         var ledgerActivities = activities.stream().map(activity -> {
-            var ledgerActivity = ledgerActivityFactory.create(activity, temporalContext);
-            ledgerActivityRepository.insert(ledgerActivity);
+            var ledgerActivity = ledgerActivityFactory.create(activity);
+            ledgerActivityRepository.insert(activity);
             return ledgerActivity;
         }).toList();
 
         // Act
-        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock());
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock(), temporalContext);
 
         // Verify
         checkLedgerAgainstLedgerActivityImpactExpectations(ledger, DATA_PATH + "applyLedgerActivities_test1" +
@@ -133,6 +138,7 @@ class LedgerServiceTest {
     }
 
     @Test
+    @Transactional
     void testReverseLedgerActivity() throws IOException {
         // Setup
         var ledger = createEmptyLedger();
@@ -140,9 +146,11 @@ class LedgerServiceTest {
                 generalLedgerActivityCSVUtil.parse(DATA_PATH + "testReverseLedgerActivity/ledger_activities" + ".csv"
                         , GeneralLedgerActivity.class);
         var ledgerActivities = activities.stream()
-                .map(activity -> ledgerActivityFactory.create(activity, new TemporalActivityContext())).toList();
-        ledgerActivities.forEach(ledgerActivityRepository::insert);
-        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock());
+                .map(activity -> {
+                    ledgerActivityRepository.insert(activity);
+                    return ledgerActivityFactory.create(activity);
+                }).toList();
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock(), new TemporalActivityContext());
 
         // Verify
         var entries = ledger.getEntries();
@@ -164,21 +172,25 @@ class LedgerServiceTest {
         var ledger = createEmptyLedger();
         var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + x, GeneralLedgerActivity.class);
         var ledgerActivities = activities.stream()
-                .map(activity -> ledgerActivityFactory.create(activity, temporalContext)).toList();
-        ledgerActivities.forEach(ledgerActivityRepository::insert);
+                .map(activity -> {
+                    ledgerActivityRepository.insert(activity);
+                    return ledgerActivityFactory.create(activity);
+                }).toList();
 
         // Act
-        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock());
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock(), temporalContext);
         return ledger;
     }
 
     @Test
+    @Transactional
     void testPastDatedPayment() throws IOException {
         final var ledger = setupAndActForTestPastPayment("testPastDatedPayment/ledger_activities.csv");
         assertEquals(980000, ledger.getCurrentBalance().getTotalAmount().getNumber().doubleValue());
     }
 
     @Test
+    @Transactional
     void testPastDatedPayment2() throws IOException {
         final var ledger = setupAndActForTestPastPayment("testPastDatedPayment/ledger_activities2.csv");
 
@@ -211,12 +223,14 @@ class LedgerServiceTest {
     }
 
     @Test
+    @Transactional
     void testPastDatedPayment3() throws IOException {
         final var ledger = setupAndActForTestPastPayment("testPastDatedPayment/ledger_activities3.csv");
         assertEquals(990271.23, toDouble(ledger.getCurrentBalance().getTotalAmount()));
     }
 
     @Test
+    @Transactional
     void shouldThrowIllegalArgumentExceptionWhenReversingBackdatedEntry() throws IOException {
         // Setup
         var ledger = createEmptyLedger();
@@ -224,20 +238,23 @@ class LedgerServiceTest {
                 generalLedgerActivityCSVUtil.parse(DATA_PATH + "testReverseLedgerActivity/ledger_activities" + ".csv"
                         , GeneralLedgerActivity.class);
         var ledgerActivities = activities.stream()
-                .map(activity -> ledgerActivityFactory.create(activity, new TemporalActivityContext())).toList();
-        ledgerActivities.forEach(ledgerActivityRepository::insert);
-        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock());
+                .map(activity -> {
+                    ledgerActivityRepository.insert(activity);
+                    return ledgerActivityFactory.create(activity);
+                }).toList();
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock(), new TemporalActivityContext());
 
         var temporalContext = getSampleTemporalActivityContext();
 
         // Act
         assertThrows(IllegalArgumentException.class, () -> {
-            var activity = new StartOfDay(LOAN_ID, "SOD", LocalDateTime.parse("2024-03-01T00:00:00"), temporalContext);
-            activity.applyTo(ledger, new LedgerClock());
+            var activity = new StartOfDay(LOAN_ID, "SOD", LocalDateTime.parse("2024-03-01T00:00:00"));
+            activity.applyTo(ledger, new LedgerClock(), temporalContext);
         });
     }
 
     @Test
+    @Transactional
     void shouldThrowRuntimeExceptionWhenReversedActivityHasNoLedgerEntries() {
         // Setup
         var ledger = mock(Ledger.class);
@@ -247,11 +264,13 @@ class LedgerServiceTest {
 
         // Act
         assertThrows(RuntimeException.class, () -> {
-            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock());
+            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock(),
+                    new TemporalActivityContext());
         });
     }
 
     @Test
+    @Transactional
     void shouldThrowRuntimeExceptionWhenReversedActivityHasNoLedgerEntries2() {
         // Setup
         var ledger = mock(Ledger.class);
@@ -262,11 +281,13 @@ class LedgerServiceTest {
 
         // Act
         assertThrows(RuntimeException.class, () -> {
-            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock());
+            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock(),
+                    new TemporalActivityContext());
         });
     }
 
     @Test
+    @Transactional
     void shouldThrowRuntimeExceptionWhenReversedActivityHasNoLedgerEntries3() {
         // Setup
         var ledger = mock(Ledger.class);
@@ -276,7 +297,8 @@ class LedgerServiceTest {
 
         // Act
         assertThrows(RuntimeException.class, () -> {
-            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock());
+            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock(),
+                    new TemporalActivityContext());
         });
     }
 

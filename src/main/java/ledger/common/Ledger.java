@@ -29,7 +29,7 @@ public class Ledger implements Cloneable {
         newEntry.updateBalances(this.getCurrentBalance());
         entries.add(newEntry);
     }
-    
+
     public List<LedgerEntry> getEntriesSortedBy(Function<LedgerEntry, LocalDateTime> sorter) {
         return entries.stream().sorted(Comparator.comparing(sorter)).collect(Collectors.toList());
     }

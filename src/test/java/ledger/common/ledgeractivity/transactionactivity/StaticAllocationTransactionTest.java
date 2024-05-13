@@ -3,6 +3,7 @@ package ledger.common.ledgeractivity.transactionactivity;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import ledger.common.Ledger;
+import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
 import ledger.model.Balance;
 import ledger.model.Direction;
 import ledger.model.LedgerClock;
@@ -45,7 +46,7 @@ class StaticAllocationTransactionTest {
         var staticAllocationTransaction = new StaticAllocationTransaction(LOAN_ID, "Adjustment", ACTIVITY_TYPE,
                 ACTIVITY_ID, customSpreadOverride, Direction.CREDIT, LocalDateTime.now(), LocalDateTime.now(),
                 ledgerService);
-        staticAllocationTransaction.applyTo(ledger, new LedgerClock());
+        staticAllocationTransaction.applyTo(ledger, new LedgerClock(), new TemporalActivityContext());
         // Expect an entry to be added to the ledger having static allocation transaction
         var entries = ledger.getEntries();
         assertEquals(1, entries.size());

@@ -1,11 +1,10 @@
 package ledger.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import ledger.common.LedgerActivity;
 import ledger.common.ledgeractivity.domain.InterestRate;
 import ledger.common.ledgeractivity.domain.Loan;
 import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
-import ledger.repository.InterestRateRepository;
+import ledger.model.GeneralLedgerActivity;
 import ledger.repository.LedgerActivityRepository;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -20,24 +19,21 @@ public class LoanService {
     @NonNull
     LedgerActivityRepository ledgerActivityRepository;
 
-    @NonNull
-    InterestRateRepository interestRateRepository;
-
     public List<InterestRate> getEffectiveInterestRates(UUID loanId) {
         return InterestRate.find("loanId", loanId).list();
     }
 
-    public List<LedgerActivity> getLedgerActivitiesCreatedSinceButBeforeCreatedAt(String loanId,
-                                                                                  String ledgerActivityType,
-                                                                                  String ledgerActivityId,
-                                                                                  LocalDateTime createdAt) {
+    public List<GeneralLedgerActivity> getLedgerActivitiesCreatedSinceButBeforeCreatedAt(String loanId,
+                                                                                         String ledgerActivityType,
+                                                                                         String ledgerActivityId,
+                                                                                         LocalDateTime createdAt) {
         return ledgerActivityRepository.getLedgerActivitiesCreatedSinceButBeforeCreatedAt(loanId, ledgerActivityType,
                 ledgerActivityId, createdAt);
     }
 
-    public List<LedgerActivity> getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBefore(String loanId,
-                                                                                          LocalDateTime effectiveAt,
-                                                                                          LocalDateTime createdAt) {
+    public List<GeneralLedgerActivity> getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBefore(String loanId,
+                                                                                                 LocalDateTime effectiveAt,
+                                                                                                 LocalDateTime createdAt) {
         return ledgerActivityRepository.getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBefore(loanId, effectiveAt
                 , createdAt);
     }

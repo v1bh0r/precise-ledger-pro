@@ -1,6 +1,7 @@
 package ledger.common.ledgeractivity.transactionactivity;
 
 import ledger.common.Ledger;
+import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
 import ledger.common.ledgeractivity.transactionactivity.transactionspreadstrategy.StaticSpread;
 import ledger.model.Balance;
 import ledger.model.Direction;
@@ -27,7 +28,7 @@ public class StaticAllocationTransaction extends Transaction {
 
     @Override
     public void generateLedgerEntries(Ledger ledger,
-                                      LedgerClock ledgerClock) {
+                                      LedgerClock ledgerClock, TemporalActivityContext temporalActivityContext) {
         var currentBalance = ledger.getCurrentBalance();
         var newBalance = transactionSpreadStrategy.applyTo(ledger.getCurrentBalance());
         var difference = newBalance.subtract(currentBalance);

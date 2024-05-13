@@ -1,5 +1,6 @@
 package ledger.common;
 
+import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
 import ledger.model.LedgerClock;
 import ledger.model.LedgerEntry;
 import lombok.AllArgsConstructor;
@@ -39,7 +40,7 @@ public abstract class LedgerActivity {
         return activityType.equals(other.activityType) && activityId.equals(other.activityId);
     }
 
-    public void applyTo(Ledger ledger, LedgerClock ledgerClock) {
+    public void applyTo(Ledger ledger, LedgerClock ledgerClock, TemporalActivityContext temporalActivityContext) {
         if (isBackdatedEntry(ledger)) {
             /*
              * We cannot add backdated entries to the ledger from here.
@@ -51,7 +52,7 @@ public abstract class LedgerActivity {
             throw new IllegalArgumentException(String.format("LoanId: %s ActivityType: %s ActivityId: %s ; Cannot " + "add" + " backdated entries to the ledger", loanId, activityType, activityId));
 
         }
-        generateLedgerEntries(ledger, ledgerClock);
+        generateLedgerEntries(ledger, ledgerClock, temporalActivityContext);
         ledgerClock.advanceTime(this.createdAt);
     }
 
@@ -67,9 +68,11 @@ public abstract class LedgerActivity {
     /**
      * Adds one or more Ledger Activities to the ledger depending on the type of Ledger Activity
      *
-     * @param ledger      the ledger to which the Ledger Activities are added
-     * @param ledgerClock the clock that keeps track of the current time
+     * @param ledger                  the ledger to which the Ledger Activities are added
+     * @param ledgerClock             the clock that keeps track of the current time
+     * @param temporalActivityContext
      */
     protected abstract void generateLedgerEntries(Ledger ledger,
-                                                  LedgerClock ledgerClock);
+                                                  LedgerClock ledgerClock,
+                                                  TemporalActivityContext temporalActivityContext);
 }

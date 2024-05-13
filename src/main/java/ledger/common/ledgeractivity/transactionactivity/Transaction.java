@@ -3,6 +3,7 @@ package ledger.common.ledgeractivity.transactionactivity;
 import ledger.common.Ledger;
 import ledger.common.LedgerActivity;
 import ledger.common.TransactionSpreadStrategy;
+import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
 import ledger.model.GeneralLedgerActivity;
 import ledger.model.LedgerClock;
 import ledger.model.LedgerEntry;
@@ -46,7 +47,7 @@ public class Transaction extends LedgerActivity {
 
     @Override
     public void generateLedgerEntries(Ledger ledger,
-                                      LedgerClock ledgerClock) {
+                                      LedgerClock ledgerClock, TemporalActivityContext temporalActivityContext) {
         var currentBalance = ledger.getCurrentBalance();
         var balance = transactionSpreadStrategy.applyTo(currentBalance);
         var change = balance.subtract(currentBalance);

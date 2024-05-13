@@ -45,7 +45,7 @@ class LedgerActivityFactoryTest {
                 .build();
 
 
-        LedgerActivity result = ledgerActivityFactory.create(generalActivity, null);
+        LedgerActivity result = ledgerActivityFactory.create(generalActivity);
 
         assertInstanceOf(Transaction.class, result);
     }
@@ -62,7 +62,7 @@ class LedgerActivityFactoryTest {
                 .build();
 
         var ledger = createBlankLedger(LOAN_ID);
-        LedgerActivity result = ledgerActivityFactory.create(generalActivity, null);
+        LedgerActivity result = ledgerActivityFactory.create(generalActivity);
 
         assertInstanceOf(StartOfDay.class, result);
     }
@@ -81,7 +81,7 @@ class LedgerActivityFactoryTest {
                 .build();
 
         var ledger = createBlankLedger(LOAN_ID);
-        LedgerActivity result = ledgerActivityFactory.create(generalActivity, null);
+        LedgerActivity result = ledgerActivityFactory.create(generalActivity);
         assertInstanceOf(ReversalActivity.class, result);
     }
 
@@ -92,7 +92,7 @@ class LedgerActivityFactoryTest {
                 .build();
 
         var ledger = createBlankLedger(LOAN_ID);
-        LedgerActivity result = ledgerActivityFactory.create(generalActivity, null);
+        LedgerActivity result = ledgerActivityFactory.create(generalActivity);
 
         assertNull(result);
     }

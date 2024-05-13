@@ -1,9 +1,7 @@
 package ledger.repository;
 
 import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
-import ledger.common.LedgerActivityFactory;
-import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
+import jakarta.transaction.Transactional;
 import ledger.model.GeneralLedgerActivity;
 import ledger.util.CSVUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,86 +11,110 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 class LedgerActivityRepositoryTest {
-    @Inject
-    LedgerActivityFactory ledgerActivityFactory;
     LedgerActivityRepository ledgerActivityRepository;
     private final CSVUtil<GeneralLedgerActivity> generalLedgerActivityCSVUtil = new CSVUtil<>();
     private static final String DATA_PATH = "data/ledger/repository/ledgerActivityRepositoryTest/";
 
     @BeforeEach
+    @Transactional
     void setUp() throws IOException {
-        ledgerActivityRepository = new LedgerActivityRepository(ledgerActivityFactory);
-        List<GeneralLedgerActivity> activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + "ledger_activities" +
-                ".csv", GeneralLedgerActivity.class);
-        var temporaryContext = new TemporalActivityContext();
+        ledgerActivityRepository = new LedgerActivityRepository();
+        ledgerActivityRepository.deleteAll();
+        List<GeneralLedgerActivity> activities =
+                generalLedgerActivityCSVUtil.parse(DATA_PATH + "ledger_activities" + ".csv",
+                        GeneralLedgerActivity.class);
         activities.forEach(activity -> {
-            ledgerActivityRepository.insert(activity, temporaryContext);
+            ledgerActivityRepository.insert(activity);
         });
     }
 
     @Test
-    void findFirstByLoanIdAndTypeAndIdReturnsCorrectActivity() throws IOException {
-        var firstActivity = ledgerActivityRepository.getLedgerActivities().getFirst();
-        var result = ledgerActivityRepository.findFirstByLoanIdAndTypeAndId(firstActivity.getLoanId(),
-                firstActivity.getActivityType(), firstActivity.getActivityId());
-        assertEquals(firstActivity, result);
+    @Transactional
+    void deleteAllClearsPersistedActivities() {
+        GeneralLedgerActivity activity1 = new GeneralLedgerActivity();
+        GeneralLedgerActivity activity2 = new GeneralLedgerActivity();
+        ledgerActivityRepository.insert(activity1);
+        ledgerActivityRepository.insert(activity2);
+
+        ledgerActivityRepository.deleteAll();
+
+        List<GeneralLedgerActivity> activities = GeneralLedgerActivity.listAll();
+        assertTrue(activities.isEmpty());
     }
 
     @Test
-    void findFirstByLoanIdAndTypeAndIdReturnsCorrectActivityWhenExists() {
-        var firstActivity = ledgerActivityRepository.getLedgerActivities().getFirst();
-        var result = ledgerActivityRepository.findFirstByLoanIdAndTypeAndId(firstActivity.getLoanId(),
-                firstActivity.getActivityType(), firstActivity.getActivityId());
-        assertEquals(firstActivity, result);
-    }
-
-    @Test
-    void findFirstByLoanIdAndTypeAndIdReturnsNullWhenDoesNotExist() {
-        var result = ledgerActivityRepository.findFirstByLoanIdAndTypeAndId("nonexistent", "nonexistent",
-                "nonexistent");
-        assertNull(result);
-    }
-
-    @Test
-    void findByLoanIdAndCreatedAfterReturnsActivitiesWhenTheyExist() {
-        var firstActivity = ledgerActivityRepository.getLedgerActivities().getFirst();
-        var results = ledgerActivityRepository.findByLoanIdAndCreatedAfterButBeforeOrEqual(firstActivity,
-                LocalDateTime.now());
-        assertFalse(results.isEmpty());
-        results.forEach(result -> {
-            assertTrue(result.getCreatedAt().isAfter(firstActivity.getCreatedAt()) || result.getCreatedAt()
-                    .isEqual(firstActivity.getCreatedAt()));
-            assertEquals(firstActivity.getLoanId(), result.getLoanId());
-        });
-    }
-
-    @Test
-    void findByLoanIdAndCreatedAfterReturnsEmptyListWhenNoActivitiesExist() {
-        var lastActivity = ledgerActivityRepository.getLedgerActivities().getLast();
-        var results = ledgerActivityRepository.findByLoanIdAndCreatedAfterButBeforeOrEqual(lastActivity,
-                LocalDateTime.now());
-        assertTrue(results.isEmpty());
-    }
-
-    @Test
-    void getLedgerActivitiesCreatedSinceReturnsActivitiesWhenTheyExistButBeforeCreatedAt() {
-        var firstActivity = ledgerActivityRepository.getLedgerActivities().getFirst();
-        var results =
-                ledgerActivityRepository.getLedgerActivitiesCreatedSinceButBeforeCreatedAt(firstActivity.getLoanId(),
-                        firstActivity.getActivityType(), firstActivity.getActivityId(), LocalDateTime.now());
-        assertEquals(8, results.size());
-        assertEquals("StartOfDay", results.getFirst().getActivityType());
-    }
-
-    @Test
+    @Transactional
     void getLedgerActivitiesCreatedSinceReturnsEmptyListWhenNoActivitiesExistButBeforeCreatedAt() {
         var results = ledgerActivityRepository.getLedgerActivitiesCreatedSinceButBeforeCreatedAt("nonexistent",
-                "nonexistent",
-                "nonexistent", LocalDateTime.now());
+                "nonexistent", "nonexistent", LocalDateTime.now());
         assertTrue(results.isEmpty());
+    }
+
+    @Test
+    @Transactional
+    public void getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBeforeReturnsCorrectActivities() {
+        String loanId = "testLoanId";
+        LocalDateTime effectiveAt = LocalDateTime.now().minusDays(1);
+        LocalDateTime createdAt = LocalDateTime.now();
+
+        // Insert some test data
+        GeneralLedgerActivity activity1 = GeneralLedgerActivity.builder()
+                .loanId(loanId)
+                .effectiveAt(effectiveAt.plusHours(1))
+                .transactionTime(createdAt.minusHours(1)).build();
+        ledgerActivityRepository.insert(activity1);
+
+        GeneralLedgerActivity activity2 = GeneralLedgerActivity.builder()
+                .loanId(loanId)
+                .effectiveAt(effectiveAt.minusHours(1))
+                .transactionTime(createdAt.minusHours(1)).build();
+        ledgerActivityRepository.insert(activity2);
+
+        List<GeneralLedgerActivity> actualActivities =
+                ledgerActivityRepository.getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBefore(loanId,
+                        effectiveAt, createdAt);
+
+        assertEquals(1, actualActivities.size());
+        assertEquals(activity1, actualActivities.getFirst());
+    }
+
+    @Test
+    @Transactional
+    public void getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBeforeReturnsEmptyWhenNoActivities() {
+        String loanId = "testLoanId";
+        LocalDateTime effectiveAt = LocalDateTime.now().minusDays(1);
+        LocalDateTime createdAt = LocalDateTime.now();
+
+        List<GeneralLedgerActivity> actualActivities =
+                ledgerActivityRepository.getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBefore(loanId,
+                        effectiveAt, createdAt);
+
+        assertTrue(actualActivities.isEmpty());
+    }
+
+    @Test
+    @Transactional
+    public void getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBeforeReturnsActivitiesWhenEffectiveAtIsEqualToActivityEffectiveAt() {
+        String loanId = "testLoanId";
+        LocalDateTime effectiveAt = LocalDateTime.now().minusDays(1);
+        LocalDateTime createdAt = LocalDateTime.now();
+
+        GeneralLedgerActivity activity1 = GeneralLedgerActivity.builder()
+                .loanId(loanId)
+                .effectiveAt(effectiveAt) // This should be included in the result
+                .transactionTime(createdAt.minusHours(1)).build();
+        ledgerActivityRepository.insert(activity1);
+
+        List<GeneralLedgerActivity> actualActivities =
+                ledgerActivityRepository.getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBefore(loanId,
+                        effectiveAt, createdAt);
+
+        assertEquals(1, actualActivities.size());
+        assertEquals(activity1, actualActivities.get(0));
     }
 }

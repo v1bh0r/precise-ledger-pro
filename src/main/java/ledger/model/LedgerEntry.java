@@ -1,5 +1,6 @@
 package ledger.model;
 
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import ledger.common.MonetaryUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +19,7 @@ import static ledger.common.MonetaryUtil.zero;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class LedgerEntry implements Cloneable {
+public class LedgerEntry extends PanacheEntityBase implements Cloneable {
 
     private String loanId;
 
@@ -26,45 +27,34 @@ public class LedgerEntry implements Cloneable {
 
     private String entryType;
 
-
     @Builder.Default
     private MonetaryAmount amount = zero();
-
 
     @Builder.Default
     private MonetaryAmount principal = zero();
 
-
     @Builder.Default
     private MonetaryAmount interest = zero();
-
 
     @Builder.Default
     private MonetaryAmount fee = zero();
 
-
     @Builder.Default
     private MonetaryAmount excess = zero();
-
 
     @Builder.Default
     private MonetaryAmount principalBalance = zero();
 
-
     @Builder.Default
     private MonetaryAmount interestBalance = zero();
-
 
     @Builder.Default
     private MonetaryAmount feeBalance = zero();
 
-
     @Builder.Default
     private MonetaryAmount excessBalance = zero();
 
-
     private LocalDateTime effectiveAt;
-
 
     private LocalDateTime createdAt;
 
@@ -82,10 +72,10 @@ public class LedgerEntry implements Cloneable {
 
     public String toString() {
         return String.format("%-5s%-10s%-10s%-10s%-10s%-10s%-10s%-10s%20s%20s%12s%-4s", entryId,
-                entryType.substring(0, 5)
-                , formatNumber(principal), formatNumber(interest), formatNumber(fee), formatNumber(principalBalance),
-                formatNumber(interestBalance), formatNumber(feeBalance), shortTimestamp(effectiveAt),
-                shortTimestamp(createdAt), sourceLedgerActivityType, sourceLedgerActivityId);
+                entryType.substring(0, 5), formatNumber(principal), formatNumber(interest), formatNumber(fee),
+                formatNumber(principalBalance), formatNumber(interestBalance), formatNumber(feeBalance),
+                shortTimestamp(effectiveAt), shortTimestamp(createdAt), sourceLedgerActivityType,
+                sourceLedgerActivityId);
     }
 
     private String shortTimestamp(LocalDateTime timestamp) {
