@@ -13,7 +13,6 @@ import ledger.model.*;
 import ledger.repository.LedgerActivityRepository;
 import ledger.util.CSVUtil;
 import ledger.util.ObjectToCsvUtil;
-import org.jboss.logging.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,8 +35,6 @@ class LedgerServiceTest {
     private ObjectToCsvUtil<LedgerEntry> objectToCsvUtil;
     @Inject
     LedgerService ledgerService;
-    @Inject
-    Logger log;
 
     @Inject
     LedgerActivityFactory ledgerActivityFactory;
@@ -55,7 +52,7 @@ class LedgerServiceTest {
     @BeforeEach
     @Transactional
     void setUp() {
-        objectToCsvUtil = new ObjectToCsvUtil<>(log);
+        objectToCsvUtil = new ObjectToCsvUtil<>();
     }
 
     @AfterEach
@@ -67,7 +64,7 @@ class LedgerServiceTest {
 
     @Test
     @Transactional
-    void syncWithRetroactiveLedger_test1() throws IOException {
+    void syncWithRetroactiveLedger_test1() throws IOException, IllegalAccessException {
         // TODO: The test fails sometimes because of an issue with CSV parsing.
         //   I haven't been able to figure out why this happens and why only some times
         //   and not always.
@@ -90,7 +87,7 @@ class LedgerServiceTest {
 
     @Test
     @Transactional
-    void applyLedgerActivities_test1() throws IOException {
+    void applyLedgerActivities_test1() throws IOException, IllegalAccessException {
         // Setup
 
         final var temporalContext = getSampleTemporalActivityContext();
@@ -139,7 +136,7 @@ class LedgerServiceTest {
 
     @Test
     @Transactional
-    void testReverseLedgerActivity() throws IOException {
+    void testReverseLedgerActivity() throws IOException, IllegalAccessException {
         // Setup
         var ledger = createEmptyLedger();
         var activities =
@@ -191,7 +188,7 @@ class LedgerServiceTest {
 
     @Test
     @Transactional
-    void testPastDatedPayment2() throws IOException {
+    void testPastDatedPayment2() throws IOException, IllegalAccessException {
         final var ledger = setupAndActForTestPastPayment("testPastDatedPayment/ledger_activities2.csv");
 
         checkLedgerAgainstLedgerActivityImpactExpectations(ledger, DATA_PATH + "testPastDatedPayment" +
@@ -263,10 +260,9 @@ class LedgerServiceTest {
         when(reversalActivity.getReversedActivityId()).thenReturn("");
 
         // Act
-        assertThrows(RuntimeException.class, () -> {
-            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock(),
-                    new TemporalActivityContext());
-        });
+        assertThrows(RuntimeException.class, () -> ledgerService.reverseLedgerActivity(reversalActivity, ledger,
+                new LedgerClock(),
+                new TemporalActivityContext()));
     }
 
     @Test
@@ -280,10 +276,9 @@ class LedgerServiceTest {
         when(ledger.calculateTotalImpact("Asdfasdf", "asdfasdfds")).thenReturn(null);
 
         // Act
-        assertThrows(RuntimeException.class, () -> {
-            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock(),
-                    new TemporalActivityContext());
-        });
+        assertThrows(RuntimeException.class, () -> ledgerService.reverseLedgerActivity(reversalActivity, ledger,
+                new LedgerClock(),
+                new TemporalActivityContext()));
     }
 
     @Test
@@ -296,10 +291,9 @@ class LedgerServiceTest {
         when(reversalActivity.getReversedActivityId()).thenReturn("");
 
         // Act
-        assertThrows(RuntimeException.class, () -> {
-            ledgerService.reverseLedgerActivity(reversalActivity, ledger, new LedgerClock(),
-                    new TemporalActivityContext());
-        });
+        assertThrows(RuntimeException.class, () -> ledgerService.reverseLedgerActivity(reversalActivity, ledger,
+                new LedgerClock(),
+                new TemporalActivityContext()));
     }
 
     private Ledger initLedger(String path) throws IOException {

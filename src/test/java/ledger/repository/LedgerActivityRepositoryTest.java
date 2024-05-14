@@ -28,9 +28,7 @@ class LedgerActivityRepositoryTest {
         List<GeneralLedgerActivity> activities =
                 generalLedgerActivityCSVUtil.parse(DATA_PATH + "ledger_activities" + ".csv",
                         GeneralLedgerActivity.class);
-        activities.forEach(activity -> {
-            ledgerActivityRepository.insert(activity);
-        });
+        activities.forEach(activity -> ledgerActivityRepository.insert(activity));
     }
 
     @Test
@@ -115,6 +113,6 @@ class LedgerActivityRepositoryTest {
                         effectiveAt, createdAt);
 
         assertEquals(1, actualActivities.size());
-        assertEquals(activity1, actualActivities.get(0));
+        assertEquals(activity1, actualActivities.getFirst());
     }
 }

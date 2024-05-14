@@ -13,7 +13,7 @@ import ledger.service.LoanService;
 
 import java.util.UUID;
 
-@Path("/")
+@Path("/api/v1/loans/{loanId}/ledger-activities")
 @Produces("application/json")
 public class LedgerActivityResource {
     @Inject
@@ -24,7 +24,6 @@ public class LedgerActivityResource {
     LedgerService ledgerService;
 
     @POST
-    @Path("/api/v1/loans/{loanId}/ledger-activities")
     @Transactional
     public GeneralLedgerActivity reportLedgerActivity(@PathParam("loanId") UUID loanId,
                                                       GeneralLedgerActivity generalLedgerActivity) {
