@@ -14,6 +14,7 @@ import ledger.util.CSVUtil;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.UUID;
 
@@ -56,15 +57,18 @@ public class BulkResource {
 
         var temporalContext = loanService.getTemporalActivityContext(loanId);
 
-        var ledger = ledgerService.getLedger(loanId);
+        var ledger = ledgerService.getLedger(loanId, LocalDateTime.MIN);
 
         generalLedgerActivities.stream().sorted(Comparator.comparing(GeneralLedgerActivity::getTransactionTime))
                 .forEach(generalLedgerActivity -> {
+                    generalLedgerActivity.setLoanId(loanId.toString());
                     generalLedgerActivity.persist();
                     var ledgerActivity = ledgerActivityFactory.create(generalLedgerActivity);
                     ledgerService.applyLedgerActivity(ledger, ledgerActivity,
                             ledgerService.getCurrentLedgerClock(ledger), temporalContext);
                 });
+
+        ledger.getEntries().forEach(ledgerEntry -> ledgerEntry.persist());
 
         return Response.status(Response.Status.CREATED).entity(generalLedgerActivities).build();
     }

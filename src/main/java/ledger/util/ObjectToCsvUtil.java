@@ -8,6 +8,7 @@ import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 
 @NoArgsConstructor
@@ -17,11 +18,13 @@ public class ObjectToCsvUtil<T> {
         StringBuilder csvContent = new StringBuilder();
 
         if (objects == null || objects.isEmpty()) {
-            return null;
+            return "";
         }
 
         // Assuming all objects are of the same type, get field names from the first object
         Field[] fields = objects.getFirst().getClass().getDeclaredFields();
+        // Filter out all the fields having a name starting with $$_
+        fields = Arrays.stream(fields).filter(field -> !field.getName().startsWith("$$")).toArray(Field[]::new);
         for (Field field : fields) {
             csvContent.append(field.getName()).append(",");
         }

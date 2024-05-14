@@ -14,7 +14,7 @@ import lombok.NonNull;
 import javax.money.MonetaryAmount;
 import java.time.LocalDateTime;
 
-import static ledger.service.LedgerEntryIdService.generateId;
+import static ledger.common.MonetaryUtil.toDouble;
 
 @Getter
 public class Transaction extends LedgerActivity {
@@ -51,12 +51,14 @@ public class Transaction extends LedgerActivity {
         var currentBalance = ledger.getCurrentBalance();
         var balance = transactionSpreadStrategy.applyTo(currentBalance);
         var change = balance.subtract(currentBalance);
-        ledger.addEntry(LedgerEntry.builder().entryId(generateId())
-                .entryType(super.getCommonName()).loanId(ledger.getLoanId()).amount(this.amount)
-                .createdAt(LocalDateTime.now()).effectiveAt(this.getEffectiveAt()).principal(change.principal())
-                .interest(change.interest()).fee(change.fee()).excess(change.excess())
-                .principalBalance(balance.principal()).interestBalance(balance.interest()).feeBalance(balance.fee())
-                .excessBalance(balance.excess()).sourceLedgerActivityId(super.getActivityId())
+        ledger.addEntry(LedgerEntry.builder()
+                .entryType(super.getCommonName()).loanId(ledger.getLoanId()).amount(toDouble(this.amount))
+                .createdAt(LocalDateTime.now()).effectiveAt(this.getEffectiveAt())
+                .principal(toDouble(change.principal()))
+                .interest(toDouble(change.interest())).fee(toDouble(change.fee())).excess(toDouble(change.excess()))
+                .principalBalance(toDouble(balance.principal())).interestBalance(toDouble(balance.interest()))
+                .feeBalance(toDouble(balance.fee()))
+                .excessBalance(toDouble(balance.excess())).sourceLedgerActivityId(super.getActivityId())
                 .sourceLedgerActivityType(super.getActivityType()).build());
     }
 }

@@ -1,65 +1,118 @@
 package ledger.model;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import ledger.common.MonetaryUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.apache.commons.csv.CSVRecord;
+import org.hibernate.annotations.UuidGenerator;
 
 import javax.money.MonetaryAmount;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import static ledger.common.MonetaryUtil.formatNumber;
-import static ledger.common.MonetaryUtil.zero;
+import static ledger.common.MonetaryUtil.toDouble;
 
+@Entity
 @Getter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@RequiredArgsConstructor
 public class LedgerEntry extends PanacheEntityBase implements Cloneable {
-
+    @NonNull
     private String loanId;
-
+    @Id
+    @UuidGenerator
     private String entryId;
 
+    @NonNull
     private String entryType;
 
+    @NonNull
     @Builder.Default
-    private MonetaryAmount amount = zero();
+    private Double amount = 0.0;
 
+    public MonetaryAmount getAmount() {
+        return MonetaryUtil.toMonetaryAmount(amount);
+    }
+
+    @NonNull
     @Builder.Default
-    private MonetaryAmount principal = zero();
+    private Double principal = 0.0;
 
+    public MonetaryAmount getPrincipal() {
+        return MonetaryUtil.toMonetaryAmount(principal);
+    }
+
+    @NonNull
     @Builder.Default
-    private MonetaryAmount interest = zero();
+    private Double interest = 0.0;
 
+    public MonetaryAmount getInterest() {
+        return MonetaryUtil.toMonetaryAmount(interest);
+    }
+
+    @NonNull
     @Builder.Default
-    private MonetaryAmount fee = zero();
+    private Double fee = 0.0;
 
+    public MonetaryAmount getFee() {
+        return MonetaryUtil.toMonetaryAmount(fee);
+    }
+
+    @NonNull
     @Builder.Default
-    private MonetaryAmount excess = zero();
+    private Double excess = 0.0;
 
+    public MonetaryAmount getExcess() {
+        return MonetaryUtil.toMonetaryAmount(excess);
+    }
+
+    @NonNull
     @Builder.Default
-    private MonetaryAmount principalBalance = zero();
+    private Double principalBalance = 0.0;
 
+    public MonetaryAmount getPrincipalBalance() {
+        return MonetaryUtil.toMonetaryAmount(principalBalance);
+    }
+
+    @NonNull
     @Builder.Default
-    private MonetaryAmount interestBalance = zero();
+    private Double interestBalance = 0.0;
 
+    public MonetaryAmount getInterestBalance() {
+        return MonetaryUtil.toMonetaryAmount(interestBalance);
+    }
+
+    @NonNull
     @Builder.Default
-    private MonetaryAmount feeBalance = zero();
+    private Double feeBalance = 0.0;
 
+    public MonetaryAmount getFeeBalance() {
+        return MonetaryUtil.toMonetaryAmount(feeBalance);
+    }
+
+    @NonNull
     @Builder.Default
-    private MonetaryAmount excessBalance = zero();
+    private Double excessBalance = 0.0;
 
+    public MonetaryAmount getExcessBalance() {
+        return MonetaryUtil.toMonetaryAmount(excessBalance);
+    }
+
+    @NonNull
     private LocalDateTime effectiveAt;
 
+    @NonNull
     private LocalDateTime createdAt;
 
+    @NonNull
     private String sourceLedgerActivityType;
 
+    @NonNull
     private String sourceLedgerActivityId;
 
     public Balance getBalance() {
@@ -72,8 +125,9 @@ public class LedgerEntry extends PanacheEntityBase implements Cloneable {
 
     public String toString() {
         return String.format("%-5s%-10s%-10s%-10s%-10s%-10s%-10s%-10s%20s%20s%12s%-4s", entryId,
-                entryType.substring(0, 5), formatNumber(principal), formatNumber(interest), formatNumber(fee),
-                formatNumber(principalBalance), formatNumber(interestBalance), formatNumber(feeBalance),
+                entryType.substring(0, 5), formatNumber(getPrincipal()), formatNumber(getInterest()),
+                formatNumber(getFee()),
+                formatNumber(getPrincipalBalance()), formatNumber(getInterestBalance()), formatNumber(getFeeBalance()),
                 shortTimestamp(effectiveAt), shortTimestamp(createdAt), sourceLedgerActivityType,
                 sourceLedgerActivityId);
     }
@@ -85,17 +139,16 @@ public class LedgerEntry extends PanacheEntityBase implements Cloneable {
     @SuppressWarnings("unused")
     public LedgerEntry(CSVRecord record) {
         this.loanId = record.get("loanId");
-        this.entryId = record.get("entryId");
         this.entryType = record.get("entryType");
-        this.amount = MonetaryUtil.toMonetaryAmount(record.get("amount"));
-        this.principal = MonetaryUtil.toMonetaryAmount(record.get("principal"));
-        this.interest = MonetaryUtil.toMonetaryAmount(record.get("interest"));
-        this.fee = MonetaryUtil.toMonetaryAmount(record.get("fee"));
-        this.excess = MonetaryUtil.toMonetaryAmount(record.get("excess"));
-        this.principalBalance = MonetaryUtil.toMonetaryAmount(record.get("principalBalance"));
-        this.interestBalance = MonetaryUtil.toMonetaryAmount(record.get("interestBalance"));
-        this.feeBalance = MonetaryUtil.toMonetaryAmount(record.get("feeBalance"));
-        this.excessBalance = MonetaryUtil.toMonetaryAmount(record.get("excessBalance"));
+        this.amount = Double.parseDouble(record.get("amount"));
+        this.principal = Double.parseDouble(record.get("principal"));
+        this.interest = Double.parseDouble(record.get("interest"));
+        this.fee = Double.parseDouble(record.get("fee"));
+        this.excess = Double.parseDouble(record.get("excess"));
+        this.principalBalance = Double.parseDouble(record.get("principalBalance"));
+        this.interestBalance = Double.parseDouble(record.get("interestBalance"));
+        this.feeBalance = Double.parseDouble(record.get("feeBalance"));
+        this.excessBalance = Double.parseDouble(record.get("excessBalance"));
         this.effectiveAt = LocalDateTime.parse(record.get("effectiveAt"),
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T" + "'HH:mm:ss"));
         this.createdAt = LocalDateTime.parse(record.get("createdAt"), DateTimeFormatter.ofPattern("yyyy-MM-dd'T" +
@@ -105,10 +158,10 @@ public class LedgerEntry extends PanacheEntityBase implements Cloneable {
     }
 
     public void updateBalances(Balance currentLedgerBalance) {
-        this.principalBalance = currentLedgerBalance.principal().add(principal);
-        this.interestBalance = currentLedgerBalance.interest().add(interest);
-        this.feeBalance = currentLedgerBalance.fee().add(fee);
-        this.excessBalance = currentLedgerBalance.excess().add(excess);
+        this.principalBalance = toDouble(currentLedgerBalance.principal().add(getPrincipal()));
+        this.interestBalance = toDouble(currentLedgerBalance.interest().add(getInterest()));
+        this.feeBalance = toDouble(currentLedgerBalance.fee().add(getFee()));
+        this.excessBalance = toDouble(currentLedgerBalance.excess().add(getExcess()));
     }
 
     @Override

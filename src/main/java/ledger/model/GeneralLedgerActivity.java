@@ -5,10 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import ledger.common.LedgerActivity;
 import ledger.common.MonetaryUtil;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.apache.commons.csv.CSVRecord;
 import org.hibernate.annotations.UuidGenerator;
 
@@ -26,6 +23,7 @@ public class GeneralLedgerActivity extends PanacheEntityBase {
     @UuidGenerator
     private String id;
     private String activityId;
+    @Setter
     private String loanId;
 
     private String commonName;

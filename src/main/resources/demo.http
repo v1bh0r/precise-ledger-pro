@@ -1,0 +1,98 @@
+###
+POST http://localhost:8080/api/v1/loans
+Content-Type: application/json
+Accept: application/json
+
+{
+    "daysInYear": 365,
+    "currencyCode": "USD",
+    "externalId": "LAI-100001"
+}
+
+> {%
+    client.global.set("createdLoanId", response.body.id);
+%}
+
+<> 2024-05-14T181943.200.json
+<> 2024-05-14T181554.200.json
+<> 2024-05-14T181401.200.json
+<> 2024-05-14T180800.200.json
+<> 2024-05-14T180624.200.json
+<> 2024-05-14T180547.200.json
+<> 2024-05-14T180430.200.json
+<> 2024-05-14T180351.200.json
+
+
+###
+GET http://localhost:8080/api/v1/loans/{{createdLoanId}}
+Accept: application/json
+
+<> 2024-05-14T181943-1.200.json
+<> 2024-05-14T181554-1.200.json
+<> 2024-05-14T181401-1.200.json
+<> 2024-05-14T180800-1.200.json
+<> 2024-05-14T180625.200.json
+<> 2024-05-14T180547-1.200.json
+<> 2024-05-14T180430-1.200.json
+<> 2024-05-14T180352.200.json
+<> 2024-05-14T175944.200.json
+
+###
+POST http://localhost:8080/bulk/api/v1/loans/{{createdLoanId}}/interest-rates
+Content-Type: text/csv
+Accept: application/json
+
+< ../../src/test/resources/data/ledger/service/applyLedgerActivities_test1/interest_rates.csv
+
+<> 2024-05-14T181943.201.json
+<> 2024-05-14T181554.201.json
+<> 2024-05-14T181402.201.json
+<> 2024-05-14T180800.201.json
+<> 2024-05-14T180625.201.json
+<> 2024-05-14T180548.201.json
+<> 2024-05-14T180430.201.json
+<> 2024-05-14T180352.201.json
+<> 2024-05-14T175944.201.json
+
+###
+
+GET http://localhost:8080/api/v1/interest-rates?loanId={{createdLoanId}}
+Accept: application/json
+
+POST http://localhost:8080/api/v1/loans/{{createdLoanId}}/ledger-activities
+Content-Type: application/json
+
+<> 2024-05-14T181943-2.200.json
+<> 2024-05-14T181554-2.200.json
+<> 2024-05-14T181402.200.json
+<> 2024-05-14T180800-2.200.json
+<> 2024-05-14T180625-1.200.json
+<> 2024-05-14T180548.200.json
+<> 2024-05-14T180430-2.200.json
+<> 2024-05-14T180352-1.200.json
+<> 2024-05-14T175944-1.200.json
+
+###
+
+POST http://localhost:8080/bulk/api/v1/loans/{{createdLoanId}}/ledger-activities
+Content-Type: text/csv
+
+< ../../src/test/resources/data/ledger/service/applyLedgerActivities_test1/ledger_activities.csv
+
+<> 2024-05-14T181948.201.json
+<> 2024-05-14T181559.201.json
+<> 2024-05-14T181420.201.json
+<> 2024-05-14T180811.201.json
+<> 2024-05-14T180700.201.json
+<> 2024-05-14T180604.201.json
+<> 2024-05-14T180353.500.json
+<> 2024-05-14T175944.500.json
+
+
+###
+GET http://localhost:8080/api/v1/loans/{{createdLoanId}}/ledger
+Accept: text/csv
+
+<> 2024-05-14T181948.200.csv
+<> 2024-05-14T181610.200.csv
+

@@ -19,7 +19,7 @@ public class LoanService {
     @NonNull
     LedgerActivityRepository ledgerActivityRepository;
 
-    public List<InterestRate> getEffectiveInterestRates(UUID loanId) {
+    public List<InterestRate> getEffectiveInterestRates(String loanId) {
         return InterestRate.find("loanId", loanId).list();
     }
 
@@ -42,7 +42,7 @@ public class LoanService {
         Loan loan = Loan.findById(loanId);
         var temporalContext = new TemporalActivityContext();
 
-        temporalContext.setProperty("interestRates", this.getEffectiveInterestRates(loanId));
+        temporalContext.setProperty("interestRates", this.getEffectiveInterestRates(loanId.toString()));
         temporalContext.setProperty("daysInYear", loan.getDaysInYear());
         temporalContext.setProperty("currencyCode", loan.getCurrencyCode());
 

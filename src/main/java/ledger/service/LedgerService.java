@@ -22,7 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
-import static ledger.service.LedgerEntryIdService.generateId;
+import static ledger.common.MonetaryUtil.toDouble;
 
 @ApplicationScoped
 @RequiredArgsConstructor
@@ -58,10 +58,19 @@ public class LedgerService {
         //  entries.
         //  The following algorithm is not efficient. We need to optimize it.
         //  The algorithm might not even be correct. We need to write tests to verify our assumptions.
-        var lastEntry = ledger.getEntriesSortedBy(LedgerEntry::getCreatedAt).getLast();
-        var lastActivity = ledgerActivityRepository.findFirstByLoanIdAndTypeAndId(ledger.getLoanId(),
-                lastEntry.getSourceLedgerActivityType(), lastEntry.getSourceLedgerActivityId());
-        return new LedgerClock(lastActivity.getTransactionTime());
+        var entries = ledger.getEntriesSortedBy(LedgerEntry::getCreatedAt);
+        if (entries.isEmpty() || entries.getLast() == null) {
+            return new LedgerClock(LocalDateTime.MIN);
+        } else {
+            var lastEntry = entries.getLast();
+            var lastActivity = ledgerActivityRepository.findFirstByLoanIdAndTypeAndId(ledger.getLoanId(),
+                    lastEntry.getSourceLedgerActivityType(), lastEntry.getSourceLedgerActivityId());
+            if (lastActivity == null) {
+                throw new RuntimeException("LedgerActivity not found for LoanId: " + ledger.getLoanId() + " Type: " +
+                        lastEntry.getSourceLedgerActivityType() + " Id: " + lastEntry.getSourceLedgerActivityId());
+            }
+            return new LedgerClock(lastActivity.getTransactionTime());
+        }
     }
 
     public void applyLedgerActivity(Ledger ledger, LedgerActivity ledgerActivity, LedgerClock ledgerClock,
@@ -112,8 +121,6 @@ public class LedgerService {
 
             if (primaryTotalImpact == null) {
                 primaryLedger.addEntry(retroEntry);
-                retroactiveIndex++;
-                continue;
             } else {
 
                 var retroTotalImpact = calculateTotalImpact(retroactiveLedger,
@@ -123,21 +130,22 @@ public class LedgerService {
                 if (!retroTotalImpact.equals(primaryTotalImpact)) {
                     var adjustedBalance = retroTotalImpact.subtract(primaryTotalImpact);
                     var adjustment = LedgerEntry.builder().loanId(primaryLedger.getLoanId())
-                            .amount(adjustedBalance.getTotalAmount()).createdAt(currentTime)
-                            .effectiveAt(adjustmentEffectiveAt).principal(adjustedBalance.principal())
-                            .interest(adjustedBalance.interest()).fee(adjustedBalance.fee())
-                            .excess(adjustedBalance.excess()).entryId(generateId()).entryType(ADJUSTMENT)
-                            .principalBalance(currentPrimaryBalance.principal().add(adjustedBalance.principal()))
-                            .interestBalance(currentPrimaryBalance.interest().add(adjustedBalance.interest()))
-                            .feeBalance(currentPrimaryBalance.fee().add(adjustedBalance.fee()))
-                            .excessBalance(currentPrimaryBalance.excess().add(adjustedBalance.excess()))
+                            .amount(toDouble(adjustedBalance.getTotalAmount())).createdAt(currentTime)
+                            .effectiveAt(adjustmentEffectiveAt).principal(toDouble(adjustedBalance.principal()))
+                            .interest(toDouble(adjustedBalance.interest())).fee(toDouble(adjustedBalance.fee()))
+                            .excess(toDouble(adjustedBalance.excess())).entryType(ADJUSTMENT)
+                            .principalBalance(toDouble(currentPrimaryBalance.principal()
+                                    .add(adjustedBalance.principal())))
+                            .interestBalance(toDouble(currentPrimaryBalance.interest().add(adjustedBalance.interest())))
+                            .feeBalance(toDouble(currentPrimaryBalance.fee().add(adjustedBalance.fee())))
+                            .excessBalance(toDouble(currentPrimaryBalance.excess().add(adjustedBalance.excess())))
                             .sourceLedgerActivityId(retroEntry.getSourceLedgerActivityId())
                             .sourceLedgerActivityType(retroEntry.getSourceLedgerActivityType()).build();
                     primaryLedger.addEntry(adjustment);
                 }
                 processedActivities.add(activityKey);
-                retroactiveIndex++;
             }
+            retroactiveIndex++;
         }
         System.out.println("primaryLedger size:" + primaryLedger.getEntries().size());
     }
@@ -223,12 +231,14 @@ public class LedgerService {
 
         var negatedImpact = impactOfReversedActivity.negate();
         var newLedgerBalance = ledger.getCurrentBalance().add(negatedImpact);
-        return LedgerEntry.builder().loanId(ledger.getLoanId()).amount(negatedImpact.getTotalAmount())
-                .createdAt(LocalDateTime.now()).effectiveAt(LocalDateTime.now()).principal(negatedImpact.principal())
-                .interest(negatedImpact.interest()).fee(negatedImpact.fee()).excess(negatedImpact.excess())
-                .entryId(generateId()).entryType("REVERSAL").principalBalance(newLedgerBalance.principal())
-                .interestBalance(newLedgerBalance.interest()).feeBalance(newLedgerBalance.fee())
-                .excessBalance(newLedgerBalance.excess()).sourceLedgerActivityId(ledgerActivityId)
+        return LedgerEntry.builder().loanId(ledger.getLoanId()).amount(toDouble(negatedImpact.getTotalAmount()))
+                .createdAt(LocalDateTime.now()).effectiveAt(LocalDateTime.now())
+                .principal(toDouble(negatedImpact.principal()))
+                .interest(toDouble(negatedImpact.interest())).fee(toDouble(negatedImpact.fee()))
+                .excess(toDouble(negatedImpact.excess()))
+                .entryType("REVERSAL").principalBalance(toDouble(newLedgerBalance.principal()))
+                .interestBalance(toDouble(newLedgerBalance.interest())).feeBalance(toDouble(newLedgerBalance.fee()))
+                .excessBalance(toDouble(newLedgerBalance.excess())).sourceLedgerActivityId(ledgerActivityId)
                 .sourceLedgerActivityType(ledgerActivityType).build();
     }
 
@@ -236,11 +246,19 @@ public class LedgerService {
         return activityType + "-" + activityId;
     }
 
+    public Ledger getLedger(UUID loanId, LocalDateTime since) {
+        Loan loan = Loan.findById(loanId);
+
+        List<LedgerEntry> ledgerEntries = LedgerEntry.find("loanId = ?1 and createdAt > ?2", loanId.toString(),
+                        since)
+                .list();
+        return new Ledger(loanId.toString(), loan.getStartingLedgerBalance(), ledgerEntries, loan.getCurrencyCode());
+    }
+
     public Ledger getLedger(UUID loanId) {
         Loan loan = Loan.findById(loanId);
 
-        List<LedgerEntry> ledgerEntries = LedgerEntry.find("loanId = ?1 and createdAt > ?2", loanId,
-                        loan.getLastLedgerFrozenOn())
+        List<LedgerEntry> ledgerEntries = LedgerEntry.find("loanId = ?1", loanId.toString())
                 .list();
         return new Ledger(loanId.toString(), loan.getStartingLedgerBalance(), ledgerEntries, loan.getCurrencyCode());
     }

@@ -11,6 +11,7 @@ import ledger.model.GeneralLedgerActivity;
 import ledger.service.LedgerService;
 import ledger.service.LoanService;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Path("/api/v1/loans/{loanId}/ledger-activities")
@@ -27,12 +28,14 @@ public class LedgerActivityResource {
     @Transactional
     public GeneralLedgerActivity reportLedgerActivity(@PathParam("loanId") UUID loanId,
                                                       GeneralLedgerActivity generalLedgerActivity) {
+        generalLedgerActivity.setLoanId(loanId.toString());
         generalLedgerActivity.persist();
         var temporalContext = loanService.getTemporalActivityContext(loanId);
         var ledgerActivity = ledgerActivityFactory.create(generalLedgerActivity);
-        var ledger = ledgerService.getLedger(loanId);
+        var ledger = ledgerService.getLedger(loanId, LocalDateTime.MIN);
         ledgerService.applyLedgerActivity(ledger, ledgerActivity, ledgerService.getCurrentLedgerClock(ledger),
                 temporalContext);
+        ledger.getEntries().forEach(ledgerEntry -> ledgerEntry.persist());
         return generalLedgerActivity;
     }
 }

@@ -12,6 +12,8 @@ import lombok.NonNull;
 
 import java.time.LocalDateTime;
 
+import static ledger.common.MonetaryUtil.toDouble;
+
 public class StaticAllocationTransaction extends Transaction {
     @NonNull
     private final Balance customSpreadOverride;
@@ -35,15 +37,15 @@ public class StaticAllocationTransaction extends Transaction {
         ledger.addEntry(LedgerEntry.builder()
                 .loanId(super.getLoanId())
                 .entryType(super.getActivityType())
-                .amount(customSpreadOverride.getTotalAmount())
-                .principal(difference.principal())
-                .interest(difference.interest())
-                .fee(difference.fee())
-                .excess(difference.excess())
-                .principalBalance(newBalance.principal())
-                .interestBalance(newBalance.interest())
-                .feeBalance(newBalance.fee())
-                .excessBalance(newBalance.excess())
+                .amount(toDouble(customSpreadOverride.getTotalAmount()))
+                .principal(toDouble(difference.principal()))
+                .interest(toDouble(difference.interest()))
+                .fee(toDouble(difference.fee()))
+                .excess(toDouble(difference.excess()))
+                .principalBalance(toDouble(newBalance.principal()))
+                .interestBalance(toDouble(newBalance.interest()))
+                .feeBalance(toDouble(newBalance.fee()))
+                .excessBalance(toDouble(newBalance.excess()))
                 .effectiveAt(super.getEffectiveAt())
                 .createdAt(super.getCreatedAt())
                 .sourceLedgerActivityType(super.getActivityType())
