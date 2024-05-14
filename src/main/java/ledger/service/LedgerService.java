@@ -27,7 +27,7 @@ import static ledger.common.MonetaryUtil.toDouble;
 @ApplicationScoped
 @RequiredArgsConstructor
 public class LedgerService {
-    private static final String ADJUSTMENT = "ADJUSTMENT";
+    private static final String ADJUSTMENT = "Adjustment";
     @NonNull
     LoanService loanService;
     @NonNull
@@ -236,7 +236,7 @@ public class LedgerService {
                 .principal(toDouble(negatedImpact.principal()))
                 .interest(toDouble(negatedImpact.interest())).fee(toDouble(negatedImpact.fee()))
                 .excess(toDouble(negatedImpact.excess()))
-                .entryType("REVERSAL").principalBalance(toDouble(newLedgerBalance.principal()))
+                .entryType("Reversal").principalBalance(toDouble(newLedgerBalance.principal()))
                 .interestBalance(toDouble(newLedgerBalance.interest())).feeBalance(toDouble(newLedgerBalance.fee()))
                 .excessBalance(toDouble(newLedgerBalance.excess())).sourceLedgerActivityId(ledgerActivityId)
                 .sourceLedgerActivityType(ledgerActivityType).build();

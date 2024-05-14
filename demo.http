@@ -42,7 +42,7 @@ POST http://localhost:8080/bulk/api/v1/loans/{{createdLoanId}}/interest-rates
 Content-Type: text/csv
 Accept: application/json
 
-< ../../src/test/resources/data/ledger/service/applyLedgerActivities_test1/interest_rates.csv
+< ./src/test/resources/data/ledger/service/applyLedgerActivities_test1/interest_rates.csv
 
 <> 2024-05-14T181943.201.json
 <> 2024-05-14T181554.201.json
@@ -77,7 +77,7 @@ Content-Type: application/json
 POST http://localhost:8080/bulk/api/v1/loans/{{createdLoanId}}/ledger-activities
 Content-Type: text/csv
 
-< ../../src/test/resources/data/ledger/service/applyLedgerActivities_test1/ledger_activities.csv
+< ./src/test/resources/data/ledger/service/applyLedgerActivities_test1/ledger_activities.csv
 
 <> 2024-05-14T181948.201.json
 <> 2024-05-14T181559.201.json
