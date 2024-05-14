@@ -1,5 +1,7 @@
 package ledger.model;
 
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.transaction.Transactional;
 import org.javamoney.moneta.Money;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -7,11 +9,14 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@QuarkusTest
 class LedgerEntryTest {
 
     @Test
     @DisplayName("Should create LedgerEntry correctly")
+    @Transactional
     void shouldCreateLedgerEntryCorrectly() {
         LedgerEntry ledgerEntry = LedgerEntry.builder()
                 .loanId("1234")
@@ -30,9 +35,10 @@ class LedgerEntryTest {
                 .sourceLedgerActivityType("Test Activity Type")
                 .sourceLedgerActivityId("9012")
                 .build();
+        ledgerEntry.persist();
 
         assertEquals("1234", ledgerEntry.getLoanId());
-        assertEquals("5678", ledgerEntry.getEntryId());
+        assertNotNull(ledgerEntry.getEntryId());
         assertEquals("Test Type", ledgerEntry.getEntryType());
         assertEquals(Money.of(100.0, "USD"), ledgerEntry.getAmount());
         assertEquals(Money.of(100.0, "USD"), ledgerEntry.getPrincipal());
