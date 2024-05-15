@@ -7,27 +7,30 @@ import ledger.common.ledgeractivity.temporalactivity.StartOfDay;
 import ledger.common.ledgeractivity.transactionactivity.Transaction;
 import ledger.model.GeneralLedgerActivity;
 import ledger.service.LedgerService;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 
-import static ledger.service.BalanceService.createBlankLedger;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @QuarkusTest
 class LedgerActivityFactoryTest {
 
     @Inject
     LedgerService ledgerService;
+
+    @Inject
+    Logger log;
     private LedgerActivityFactory ledgerActivityFactory;
 
     private final String LOAN_ID = "1234";
 
     @BeforeEach
     void setUp() {
-        ledgerActivityFactory = new LedgerActivityFactory(ledgerService);
+        ledgerActivityFactory = new LedgerActivityFactory(ledgerService, log);
     }
 
     @Test
@@ -61,7 +64,6 @@ class LedgerActivityFactoryTest {
                 .transactionTime(LocalDateTime.now())
                 .build();
 
-        var ledger = createBlankLedger(LOAN_ID);
         LedgerActivity result = ledgerActivityFactory.create(generalActivity);
 
         assertInstanceOf(StartOfDay.class, result);
@@ -80,7 +82,6 @@ class LedgerActivityFactoryTest {
                 .reversalActivityId("1")
                 .build();
 
-        var ledger = createBlankLedger(LOAN_ID);
         LedgerActivity result = ledgerActivityFactory.create(generalActivity);
         assertInstanceOf(ReversalActivity.class, result);
     }
@@ -91,10 +92,6 @@ class LedgerActivityFactoryTest {
                 .activityType("Unknown")
                 .build();
 
-        var ledger = createBlankLedger(LOAN_ID);
-        LedgerActivity result = ledgerActivityFactory.create(generalActivity);
-
-        assertNull(result);
+        assertThrows(RuntimeException.class, () -> ledgerActivityFactory.create(generalActivity));
     }
-
 }

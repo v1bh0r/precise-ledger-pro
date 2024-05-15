@@ -57,6 +57,41 @@ You can then execute your native executable with: `./target/precise-ledger-pro-1
 
 If you want to learn more about building native executables, please consult https://quarkus.io/guides/maven-tooling.
 
-## Testing the application
+## Demo
+
+### Dependencies
+
+Install the Intellij HTTP Cli tool by following the instructions
+on https://www.jetbrains.com/help/idea/http-client-cli.html
+
+### Running the demo
 
 ```shell script
+ijhttp demo.http
+```
+
+#### Sample output
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      Running IntelliJ HTTP Client with                      │
+├──────────────────────┬──────────────────────────────────────────────────────┤
+│        Files         │ demo.http                                            │
+├──────────────────────┼──────────────────────────────────────────────────────┤
+│  Public Environment  │                                                      │
+├──────────────────────┼──────────────────────────────────────────────────────┤
+│ Private Environment  │                                                      │
+└──────────────────────┴──────────────────────────────────────────────────────┘
+Request '#1' POST http://localhost:8080/api/v1/loans
+Request '#2' GET http://localhost:8080/api/v1/loans/e353deee-16c9-4477-ae28-91dd6a653775
+Request '#3' POST http://localhost:8080/bulk/api/v1/loans/e353deee-16c9-4477-ae28-91dd6a653775/interest-rates
+Request '#4' GET http://localhost:8080/api/v1/interest-rates?loanId=e353deee-16c9-4477-ae28-91dd6a653775
+Request '#5' POST http://localhost:8080/bulk/api/v1/loans/e353deee-16c9-4477-ae28-91dd6a653775/ledger-activities
+Request '#6' GET http://localhost:8080/api/v1/loans/e353deee-16c9-4477-ae28-91dd6a653775/ledger
+Request '#7' POST http://localhost:8080/api/v1/loans/e353deee-16c9-4477-ae28-91dd6a653775/ledger-activities
+ 
+
+
+7 requests completed, 0 have failed tests
+
+```

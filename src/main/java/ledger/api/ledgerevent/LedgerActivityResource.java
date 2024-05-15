@@ -2,10 +2,8 @@ package ledger.api.ledgerevent;
 
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
 import ledger.common.LedgerActivityFactory;
 import ledger.model.GeneralLedgerActivity;
 import ledger.service.LedgerService;
@@ -26,6 +24,7 @@ public class LedgerActivityResource {
 
     @POST
     @Transactional
+    @Consumes(MediaType.APPLICATION_JSON)
     public GeneralLedgerActivity reportLedgerActivity(@PathParam("loanId") UUID loanId,
                                                       GeneralLedgerActivity generalLedgerActivity) {
         generalLedgerActivity.setLoanId(loanId.toString());

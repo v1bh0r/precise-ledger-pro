@@ -65,10 +65,6 @@ class LedgerServiceTest {
     @Test
     @Transactional
     void syncWithRetroactiveLedger_test1() throws IOException, IllegalAccessException {
-        // TODO: The test fails sometimes because of an issue with CSV parsing.
-        //   I haven't been able to figure out why this happens and why only some times
-        //   and not always.
-        //   https://chat.openai.com/share/b3025f3c-e35b-45f4-a4b4-85767f579a93
         var ledger = initLedger("syncWithRetroactiveLedger_test1/ledger_entries.csv");
         objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR +
                 "syncWithRetroactiveLedger_test1_input1.csv");
@@ -87,7 +83,7 @@ class LedgerServiceTest {
 
     @Test
     @Transactional
-    void applyLedgerActivities_test1() throws IOException, IllegalAccessException {
+    void applyLedgerActivities_test1() throws IOException {
         // Setup
 
         final var temporalContext = getSampleTemporalActivityContext();
@@ -107,17 +103,6 @@ class LedgerServiceTest {
         // Verify
         checkLedgerAgainstLedgerActivityImpactExpectations(ledger, DATA_PATH + "applyLedgerActivities_test1" +
                 "/apply_ledger_activities_test1_expectation.csv");
-
-        // Write to CSV for debugging only
-        // TODO: Delete this line before committing
-        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR +
-                "applyLedgerActivities_test1_ledger_entries.csv");
-
-//        // Assertions
-//        var expectedLedger = initLedger("applyLedgerActivities_test1/ledger_entries.csv");
-//
-//        assertEquals(expectedLedger.getEntries().size(), ledger.getEntries().size());
-//        assertEquals(expectedLedger.getCurrentBalance(), ledger.getCurrentBalance());
     }
 
     private @NotNull TemporalActivityContext getSampleTemporalActivityContext() throws IOException {
@@ -188,14 +173,11 @@ class LedgerServiceTest {
 
     @Test
     @Transactional
-    void testPastDatedPayment2() throws IOException, IllegalAccessException {
+    void testPastDatedPayment2() throws IOException {
         final var ledger = setupAndActForTestPastPayment("testPastDatedPayment/ledger_activities2.csv");
 
         checkLedgerAgainstLedgerActivityImpactExpectations(ledger, DATA_PATH + "testPastDatedPayment" +
                 "/ledger_activities2_expectation.csv");
-
-        // TODO: Delete this line before committing
-        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR + "testPastDatedPayment2.csv");
     }
 
     private void checkLedgerAgainstLedgerActivityImpactExpectations(Ledger ledger, String impactExpectationsPath) {

@@ -10,7 +10,7 @@ import javax.money.MonetaryAmountFactory;
 public class MonetaryUtil {
     private static final MonetaryAmountFactory<Money> monetaryAmountFactory =
             new MonetaryProducer().produceMonetaryAmountFactory();
-    private static final String DEFAULT_CURRENCY_CODE = "USD";
+    public static final String DEFAULT_CURRENCY_CODE = "USD";
 
     public static String getDefaultCurrencyCode() {
         return DEFAULT_CURRENCY_CODE;

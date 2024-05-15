@@ -11,6 +11,8 @@ import org.hibernate.annotations.UuidGenerator;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static ledger.common.MonetaryUtil.DEFAULT_CURRENCY_CODE;
+
 
 @Entity
 @Getter
@@ -20,7 +22,7 @@ public class Loan extends PanacheEntityBase {
     @UuidGenerator
     UUID id;
     Integer daysInYear;
-    String currencyCode = "USD";
+    String currencyCode = DEFAULT_CURRENCY_CODE;
     String externalId;
     Double lastLedgerFreezePrincipalBalance = 0.0;
     Double lastLedgerFreezeInterestBalance = 0.0;

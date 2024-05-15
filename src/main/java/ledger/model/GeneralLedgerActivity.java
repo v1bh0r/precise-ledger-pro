@@ -1,10 +1,12 @@
 package ledger.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import ledger.common.LedgerActivity;
 import ledger.common.MonetaryUtil;
+import ledger.common.deserializer.MonetaryAmountDeserializer;
 import lombok.*;
 import org.apache.commons.csv.CSVRecord;
 import org.hibernate.annotations.UuidGenerator;
@@ -15,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 
 @Entity
 @Getter
+@Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -23,7 +26,6 @@ public class GeneralLedgerActivity extends PanacheEntityBase {
     @UuidGenerator
     private String id;
     private String activityId;
-    @Setter
     private String loanId;
 
     private String commonName;
@@ -32,12 +34,16 @@ public class GeneralLedgerActivity extends PanacheEntityBase {
 
     private String transactionStrategy;
 
+    @JsonDeserialize(using = MonetaryAmountDeserializer.class)
     private Double principal;
 
+    @JsonDeserialize(using = MonetaryAmountDeserializer.class)
     private Double interest;
 
+    @JsonDeserialize(using = MonetaryAmountDeserializer.class)
     private Double fee;
 
+    @JsonDeserialize(using = MonetaryAmountDeserializer.class)
     private Double excess;
 
     private String direction;
@@ -56,7 +62,6 @@ public class GeneralLedgerActivity extends PanacheEntityBase {
     public MonetaryAmount getAmount() {
         return MonetaryUtil.toMonetaryAmount(amount);
     }
-
 
     public MonetaryAmount getPrincipal() {
         return MonetaryUtil.toMonetaryAmount(principal);
