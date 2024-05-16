@@ -1,5 +1,5 @@
 steps:
-  - name: 'quarkus/quarkusio-build'
+  - name: 'quarkusio/quarkus'
     args: [ 'build', '-Dquarkus.container-image.build=true', '-Dquarkus.container-image.name=precise-ledger-pro' ]
 images:
   - 'gcr.io/$PROJECT_ID/precise-ledger-pro'
