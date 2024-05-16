@@ -7,9 +7,9 @@ steps:
       '-Dquarkus.container-image.push=true',
       '-Dquarkus.container-image.registry=asia-south2-docker.pkg.dev',
       '-Dquarkus.container-image.group=$PROJECT_ID',
-      '-Dquarkus.container-image.name=cloud-run-source-deploy/precise-ledger-pro''
+      '-Dquarkus.container-image.name=cloud-run-source-deploy/precise-ledger-pro'
     ]
 images:
   - 'asia-south2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/precise-ledger-pro'
-      options:
-        logging: CLOUD_LOGGING_ONLY
+options:
+  logging: CLOUD_LOGGING_ONLY
