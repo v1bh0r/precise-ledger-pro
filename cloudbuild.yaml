@@ -1,6 +1,7 @@
 steps:
-  - name: 'quarkusio/quarkus'
-    args: [ 'build', '-Dquarkus.container-image.build=true', '-Dquarkus.container-image.name=precise-ledger-pro' ]
+  - name: 'maven'
+    entrypoint: 'mvn'
+    args: [ 'clean', 'package', '-Dquarkus.container-image.build=true', '-Dquarkus.container-image.push=true' ]
 images:
   - 'gcr.io/$PROJECT_ID/precise-ledger-pro'
 options:
