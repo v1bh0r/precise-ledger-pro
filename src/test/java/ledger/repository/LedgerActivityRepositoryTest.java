@@ -99,8 +99,11 @@ class LedgerActivityRepositoryTest {
     @Transactional
     public void getLedgerActivitiesEffectiveOnOrAfterAndCreatedOnOrBeforeReturnsActivitiesWhenEffectiveAtIsEqualToActivityEffectiveAt() {
         String loanId = "testLoanId";
-        LocalDateTime effectiveAt = LocalDateTime.now().minusDays(1);
-        LocalDateTime createdAt = LocalDateTime.now();
+
+        // Use a fixed point in time
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime effectiveAt = now.minusDays(1);
+        LocalDateTime createdAt = now;
 
         GeneralLedgerActivity activity1 = GeneralLedgerActivity.builder()
                 .loanId(loanId)
@@ -115,4 +118,5 @@ class LedgerActivityRepositoryTest {
         assertEquals(1, actualActivities.size());
         assertEquals(activity1, actualActivities.getFirst());
     }
+
 }
