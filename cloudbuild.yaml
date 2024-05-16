@@ -1,0 +1,7 @@
+steps:
+  - name: 'gcr.io/cloud-builders/mvn'
+    args: [ 'clean', 'package', '-Dquarkus.container-image.build=true', '-Dquarkus.container-image.push=true' ]
+images:
+  - 'gcr.io/$PROJECT_ID/precise-ledger-pro'
+options:
+  logging: CLOUD_LOGGING_ONLY
