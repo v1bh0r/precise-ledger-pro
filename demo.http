@@ -98,7 +98,7 @@ Content-Type: text/csv
 <> 2024-05-14T175944.500.json
 
 ###
-GET http://localhost:8080/api/v1/loans/{{createdLoanId}}/ledger
+GET {{baseUrl}}/api/v1/loans/{{createdLoanId}}/ledger
 Accept: text/csv
 
 > {%
