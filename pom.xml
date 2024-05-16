@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.v1bh0r</groupId>
   <artifactId>precise-ledger-pro</artifactId>
@@ -10,6 +9,7 @@
     <compiler-plugin.version>3.12.1</compiler-plugin.version>
     <maven.compiler.release>21</maven.compiler.release>
     <org.javamoney.moneta.version>1.4.4</org.javamoney.moneta.version>
+    <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
     <org.projectlombok.version>1.18.32</org.projectlombok.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -18,7 +18,6 @@
     <quarkus.platform.version>3.10.0</quarkus.platform.version>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.2.5</surefire-plugin.version>
-    <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -66,6 +65,14 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-resteasy-reactive</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-container-image-jib</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-smallrye-health</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>

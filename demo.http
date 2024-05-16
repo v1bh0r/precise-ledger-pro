@@ -1,5 +1,5 @@
 ###
-POST http://localhost:8080/api/v1/loans
+POST {{baseUrl}}/api/v1/loans
 Content-Type: application/json
 Accept: application/json
 
@@ -29,7 +29,7 @@ Accept: application/json
 
 
 ###
-GET http://localhost:8080/api/v1/loans/{{createdLoanId}}
+GET {{baseUrl}}/api/v1/loans/{{createdLoanId}}
 Accept: application/json
 
 <> 2024-05-14T181943-1.200.json
@@ -43,7 +43,7 @@ Accept: application/json
 <> 2024-05-14T175944.200.json
 
 ###
-POST http://localhost:8080/bulk/api/v1/loans/{{createdLoanId}}/interest-rates
+POST {{baseUrl}}/bulk/api/v1/loans/{{createdLoanId}}/interest-rates
 Content-Type: text/csv
 Accept: application/json
 
@@ -67,7 +67,7 @@ Accept: application/json
 
 ###
 
-GET http://localhost:8080/api/v1/interest-rates?loanId={{createdLoanId}}
+GET {{baseUrl}}/api/v1/interest-rates?loanId={{createdLoanId}}
 Accept: application/json
 
 > {%
@@ -78,7 +78,7 @@ Accept: application/json
 
 ###
 
-POST http://localhost:8080/bulk/api/v1/loans/{{createdLoanId}}/ledger-activities
+POST {{baseUrl}}/bulk/api/v1/loans/{{createdLoanId}}/ledger-activities
 Content-Type: text/csv
 
 < ./src/test/resources/data/ledger/service/applyLedgerActivities_test1/ledger_activities.csv
@@ -111,7 +111,7 @@ Accept: text/csv
 
 ###
 
-POST http://localhost:8080/api/v1/loans/{{createdLoanId}}/ledger-activities
+POST {{baseUrl}}/api/v1/loans/{{createdLoanId}}/ledger-activities
 Content-Type: application/json
 Accept: application/json
 
