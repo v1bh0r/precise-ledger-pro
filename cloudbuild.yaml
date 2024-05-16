@@ -1,4 +1,9 @@
 steps:
+  # Check if the image exists before the build
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args: [ '-c', 'gcloud artifacts docker images list asia-south2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy | grep "precise-ledger-pro:latest" || echo "Image not found before build"' ]
+
   - name: 'maven'
     entrypoint: 'mvn'
     args: [
@@ -10,6 +15,17 @@ steps:
       '-Dquarkus.container-image.name=cloud-run-source-deploy/precise-ledger-pro',
       '-Dquarkus.container-image.tag=latest'
     ]
+
+    # Sleep to wait for consistency
+  - name: 'gcr.io/cloud-builders/bash'
+    entrypoint: 'bash'
+    args: [ '-c', 'sleep 10' ]
+
+  # Verify the image exists after the build
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args: [ '-c', 'gcloud artifacts docker images list asia-south2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy | grep "precise-ledger-pro:latest" || echo "Image not found after build"' ]
+
 images:
   - 'asia-south2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/precise-ledger-pro:latest'
 options:
