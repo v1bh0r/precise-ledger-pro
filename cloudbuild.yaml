@@ -3,6 +3,6 @@ steps:
     entrypoint: 'mvn'
     args: [ 'clean', 'package', '-Dquarkus.container-image.build=true', '-Dquarkus.container-image.push=true' ]
 images:
-  - 'gcr.io/$PROJECT_ID/precise-ledger-pro'
+  - 'asia-south2-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy'
 options:
   logging: CLOUD_LOGGING_ONLY
