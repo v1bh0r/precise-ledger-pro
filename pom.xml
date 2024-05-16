@@ -7,7 +7,7 @@
   <artifactId>precise-ledger-pro</artifactId>
   <version>1.0-SNAPSHOT</version>
   <properties>
-    <compiler-plugin.version>3.12.1</compiler-plugin.version>
+    <compiler-plugin.version>3.13.0</compiler-plugin.version>
     <maven.compiler.release>21</maven.compiler.release>
     <org.javamoney.moneta.version>1.4.4</org.javamoney.moneta.version>
     <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
