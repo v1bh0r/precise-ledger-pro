@@ -1,6 +1,6 @@
 steps:
-  - name: 'gcr.io/cloud-builders/mvn'
-    args: [ 'clean', 'package', '-Dquarkus.container-image.build=true', '-Dquarkus.container-image.push=true' ]
+  - name: 'quarkus/quarkusio-build'
+    args: [ 'build', '-Dquarkus.container-image.build=true', '-Dquarkus.container-image.name=precise-ledger-pro' ]
 images:
   - 'gcr.io/$PROJECT_ID/precise-ledger-pro'
 options:
