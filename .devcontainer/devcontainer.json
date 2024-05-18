@@ -1,6 +1,13 @@
 {
-    "name": "Spring Boot Dev Container",
-    "dockerComposeFile": "docker-compose.yml",
-    "service": "devcontainer",
-    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
+    "name": "Quarkus",
+    "dockerFile": "Dockerfile",
+    "appPort": [
+        8080
+    ],
+    "extensions": [
+        "redhat.java",
+        "vscjava.vscode-java-debug",
+        "vscjava.vscode-java-test",
+        "vscjava.vscode-maven"
+    ]
 }
