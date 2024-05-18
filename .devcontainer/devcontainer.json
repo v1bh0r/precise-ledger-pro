@@ -1,5 +1,5 @@
 {
-    "name": "Quarkus with Docker-in-Docker",
+    "name": "Quarkus",
     "dockerFile": "Dockerfile",
     "appPort": [
         8080
@@ -8,16 +8,6 @@
         "redhat.java",
         "vscjava.vscode-java-debug",
         "vscjava.vscode-java-test",
-        "vscjava.vscode-maven",
-        "ms-azuretools.vscode-docker"
-    ],
-    "mounts": [
-        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-    ],
-    "postCreateCommand": "sudo docker info",
-    "remoteUser": "root",
-    "features": {
-        "docker-in-docker": "latest"
-    },
-    "overrideCommand": false
+        "vscjava.vscode-maven"
+    ]
 }
