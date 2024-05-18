@@ -1,4 +1,3 @@
-# [Choice] Java version: 11, 14, 15
 ARG VARIANT=21
 FROM mcr.microsoft.com/vscode/devcontainers/java:${VARIANT}
 
