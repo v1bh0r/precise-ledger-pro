@@ -1,5 +1,5 @@
 {
-    "name": "Spring Boot Dev Container",
+    "name": "Quarkus",
     "dockerComposeFile": "docker-compose.yml",
     "service": "devcontainer",
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
