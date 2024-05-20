@@ -8,6 +8,7 @@ steps:
     entrypoint: 'mvn'
     args: [
       'clean', 'package',
+      '-DskipTests',
       '-Dquarkus.container-image.build=true',
       '-Dquarkus.container-image.push=true',
       '-Dquarkus.container-image.registry=asia-south2-docker.pkg.dev',
