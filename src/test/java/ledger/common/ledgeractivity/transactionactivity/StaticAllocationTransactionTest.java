@@ -16,7 +16,7 @@ import javax.money.Monetary;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
-import static ledger.common.MonetaryUtil.toMonetaryAmount;
+import static ledger.util.MonetaryUtil.toMonetaryAmount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @QuarkusTest

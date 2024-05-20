@@ -16,7 +16,7 @@ import org.jboss.logging.Logger;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static ledger.common.MonetaryUtil.toDouble;
+import static ledger.util.MonetaryUtil.toDouble;
 
 @Startup
 @ApplicationScoped

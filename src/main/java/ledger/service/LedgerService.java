@@ -22,7 +22,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
-import static ledger.common.MonetaryUtil.toDouble;
+import static ledger.util.DateTimeUtil.DB_SAFE_LOCAL_DATETIME_MIN;
+import static ledger.util.MonetaryUtil.toDouble;
 
 @ApplicationScoped
 @RequiredArgsConstructor
@@ -60,7 +61,7 @@ public class LedgerService {
         //  The algorithm might not even be correct. We need to write tests to verify our assumptions.
         var entries = ledger.getEntriesSortedBy(LedgerEntry::getCreatedAt);
         if (entries.isEmpty() || entries.getLast() == null) {
-            return new LedgerClock(LocalDateTime.MIN);
+            return new LedgerClock(DB_SAFE_LOCAL_DATETIME_MIN);
         } else {
             var lastEntry = entries.getLast();
             var lastActivity = ledgerActivityRepository.findFirstByLoanIdAndTypeAndId(ledger.getLoanId(),

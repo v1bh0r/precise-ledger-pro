@@ -23,8 +23,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import static ledger.common.MonetaryUtil.toDouble;
 import static ledger.service.BalanceService.createZeroBalance;
+import static ledger.util.MonetaryUtil.toDouble;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;

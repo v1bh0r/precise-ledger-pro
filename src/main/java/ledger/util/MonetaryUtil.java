@@ -1,4 +1,4 @@
-package ledger.common;
+package ledger.util;
 
 import ledger.producer.MonetaryProducer;
 import org.javamoney.moneta.Money;

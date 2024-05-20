@@ -11,7 +11,8 @@ import org.hibernate.annotations.UuidGenerator;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import static ledger.common.MonetaryUtil.DEFAULT_CURRENCY_CODE;
+import static ledger.util.DateTimeUtil.DB_SAFE_LOCAL_DATETIME_MIN;
+import static ledger.util.MonetaryUtil.DEFAULT_CURRENCY_CODE;
 
 
 @Entity
@@ -28,7 +29,7 @@ public class Loan extends PanacheEntityBase {
     Double lastLedgerFreezeInterestBalance = 0.0;
     Double lastLedgerFreezeFeeBalance = 0.0;
     Double lastLedgerFreezeExcessBalance = 0.0;
-    LocalDateTime lastLedgerFrozenOn = LocalDateTime.MIN;
+    LocalDateTime lastLedgerFrozenOn = DB_SAFE_LOCAL_DATETIME_MIN;
 
     public Balance getStartingLedgerBalance() {
         return new Balance(lastLedgerFreezePrincipalBalance, lastLedgerFreezeInterestBalance,

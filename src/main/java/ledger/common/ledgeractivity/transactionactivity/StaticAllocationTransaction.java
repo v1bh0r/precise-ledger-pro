@@ -12,7 +12,7 @@ import lombok.NonNull;
 
 import java.time.LocalDateTime;
 
-import static ledger.common.MonetaryUtil.toDouble;
+import static ledger.util.MonetaryUtil.toDouble;
 
 public class StaticAllocationTransaction extends Transaction {
     @NonNull

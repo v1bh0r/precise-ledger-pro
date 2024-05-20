@@ -14,9 +14,10 @@ import ledger.util.CSVUtil;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.UUID;
+
+import static ledger.util.DateTimeUtil.DB_SAFE_LOCAL_DATETIME_MIN;
 
 @Path("/bulk/api/v1")
 @Produces("application/json")
@@ -57,7 +58,7 @@ public class BulkResource {
 
         var temporalContext = loanService.getTemporalActivityContext(loanId);
 
-        var ledger = ledgerService.getLedger(loanId, LocalDateTime.MIN);
+        var ledger = ledgerService.getLedger(loanId, DB_SAFE_LOCAL_DATETIME_MIN);
 
         generalLedgerActivities.stream().sorted(Comparator.comparing(GeneralLedgerActivity::getTransactionTime))
                 .forEach(generalLedgerActivity -> {

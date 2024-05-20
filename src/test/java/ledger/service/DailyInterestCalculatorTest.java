@@ -2,7 +2,7 @@ package ledger.service;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import ledger.common.MonetaryUtil;
+import ledger.util.MonetaryUtil;
 import org.junit.jupiter.api.Test;
 
 import javax.money.Monetary;

@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+import static ledger.util.DateTimeUtil.DB_SAFE_LOCAL_DATETIME_MIN;
+
 
 @Getter
 @AllArgsConstructor
@@ -17,7 +19,7 @@ public class LedgerClock {
      * ledger
      * by replaying the past events.
      */
-    private LocalDateTime now = LocalDateTime.MIN;
+    private LocalDateTime now = DB_SAFE_LOCAL_DATETIME_MIN;
     // We keep a list of applied activities to avoid reapplying the same activity
 
     public void advanceTime(LocalDateTime time) {

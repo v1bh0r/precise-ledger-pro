@@ -9,8 +9,9 @@ import ledger.model.GeneralLedgerActivity;
 import ledger.service.LedgerService;
 import ledger.service.LoanService;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
+
+import static ledger.util.DateTimeUtil.DB_SAFE_LOCAL_DATETIME_MIN;
 
 @Path("/api/v1/loans/{loanId}/ledger-activities")
 @Produces("application/json")
@@ -31,7 +32,7 @@ public class LedgerActivityResource {
         generalLedgerActivity.persist();
         var temporalContext = loanService.getTemporalActivityContext(loanId);
         var ledgerActivity = ledgerActivityFactory.create(generalLedgerActivity);
-        var ledger = ledgerService.getLedger(loanId, LocalDateTime.MIN);
+        var ledger = ledgerService.getLedger(loanId, DB_SAFE_LOCAL_DATETIME_MIN);
         ledgerService.applyLedgerActivity(ledger, ledgerActivity, ledgerService.getCurrentLedgerClock(ledger),
                 temporalContext);
         ledger.getEntries().forEach(ledgerEntry -> ledgerEntry.persist());

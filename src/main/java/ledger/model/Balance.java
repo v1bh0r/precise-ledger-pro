@@ -1,10 +1,10 @@
 package ledger.model;
 
-import ledger.common.MonetaryUtil;
+import ledger.util.MonetaryUtil;
 
 import javax.money.MonetaryAmount;
 
-import static ledger.common.MonetaryUtil.toDouble;
+import static ledger.util.MonetaryUtil.toDouble;
 
 public record Balance(MonetaryAmount principal, MonetaryAmount interest, MonetaryAmount fee, MonetaryAmount excess) {
     public Balance(double principal, double interest, double fee, double excess) {

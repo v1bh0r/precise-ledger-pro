@@ -14,7 +14,7 @@ import lombok.NonNull;
 import javax.money.MonetaryAmount;
 import java.time.LocalDateTime;
 
-import static ledger.common.MonetaryUtil.toDouble;
+import static ledger.util.MonetaryUtil.toDouble;
 
 @Getter
 public class Transaction extends LedgerActivity {

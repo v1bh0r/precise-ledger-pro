@@ -3,7 +3,7 @@ package ledger.model;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import ledger.common.MonetaryUtil;
+import ledger.util.MonetaryUtil;
 import lombok.*;
 import org.apache.commons.csv.CSVRecord;
 import org.hibernate.annotations.UuidGenerator;
@@ -12,8 +12,8 @@ import javax.money.MonetaryAmount;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-import static ledger.common.MonetaryUtil.formatNumber;
-import static ledger.common.MonetaryUtil.toDouble;
+import static ledger.util.MonetaryUtil.formatNumber;
+import static ledger.util.MonetaryUtil.toDouble;
 
 @Entity
 @Getter
