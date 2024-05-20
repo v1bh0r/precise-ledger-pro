@@ -6,7 +6,8 @@ Accept: application/json
 {
     "daysInYear": 365,
     "currencyCode": "USD",
-    "externalId": "LAI-100001"
+    "externalId": "LAI-100001",
+    "lastLedgerFrozenOn": "2024-03-01T00:00:00"
 }
 
 
