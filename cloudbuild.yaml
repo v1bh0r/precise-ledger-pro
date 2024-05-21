@@ -10,5 +10,16 @@ steps:
       '-Dquarkus.container-image.name=cloud-run-source-deploy/precise-ledger-pro',
       '-Dquarkus.container-image.tag=latest'
     ]
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      [
+        'run', 'deploy', 'precise-ledger-pro',
+        '--image=asia-south2-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/precise-ledger-pro:latest',
+        '--region=asia-south2',
+        '--platform=managed',
+        '--allow-unauthenticated',
+        '--set-env-vars', 'QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=none,QUARKUS_PROFILE=prod'
+      ]
 options:
   logging: CLOUD_LOGGING_ONLY
