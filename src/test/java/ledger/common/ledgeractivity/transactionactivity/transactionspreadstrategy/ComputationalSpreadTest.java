@@ -40,7 +40,8 @@ class ComputationalSpreadTest {
 
     @Test
     void applyTo_increasePrincipal() {
-        var computationalSpread = new ComputationalSpread(Money.of(50, "USD"), Direction.CREDIT, new LinkedHashSet<>(List.of(BalanceComponent.PRINCIPAL)));
+        var computationalSpread = new ComputationalSpread(Money.of(50, "USD"), Direction.CREDIT,
+                new LinkedHashSet<>(List.of(BalanceComponent.PRINCIPAL)));
         Balance expectedBalance = balanceService.createBalance(150, 10, 5, 0, "USD");
         Balance result = computationalSpread.applyTo(balance);
         assertEquals(expectedBalance, result);
@@ -59,6 +60,24 @@ class ComputationalSpreadTest {
         var computationalSpread = new ComputationalSpread(Money.of(150, "USD"), Direction.DEBIT);
         Balance expectedBalance = balanceService.createBalance(0, 0, 0, 35, "USD");
         Balance result = computationalSpread.applyTo(balance);
+        assertEquals(expectedBalance, result);
+    }
+
+    @Test
+    void applyTo_whenCreditingToBalanceHavingExcess_FirstReduceExcessBeforeIncreasingOtherComponents() {
+        var startingBalance = balanceService.createBalance(0, 0, 0, 35, "USD");
+        var computationalSpread = new ComputationalSpread(Money.of(100, "USD"), Direction.CREDIT, "P");
+        Balance expectedBalance = balanceService.createBalance(65, 0, 0, 0, "USD");
+        Balance result = computationalSpread.applyTo(startingBalance);
+        assertEquals(expectedBalance, result);
+    }
+
+    @Test
+    void applyTo_whenCreditingToBalanceHavingExcess_FirstReduceExcessBeforeIncreasingOtherInterest() {
+        var startingBalance = balanceService.createBalance(0, 0, 0, 35, "USD");
+        var computationalSpread = new ComputationalSpread(Money.of(100, "USD"), Direction.CREDIT, "I");
+        Balance expectedBalance = balanceService.createBalance(0, 65, 0, 0, "USD");
+        Balance result = computationalSpread.applyTo(startingBalance);
         assertEquals(expectedBalance, result);
     }
 }

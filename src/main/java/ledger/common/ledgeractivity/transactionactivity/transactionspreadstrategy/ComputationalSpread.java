@@ -33,10 +33,12 @@ public class ComputationalSpread extends TransactionSpreadStrategy {
     public ComputationalSpread(@NotNull MonetaryAmount amount, @NonNull Direction direction) {
         super(direction);
         this.amount = amount;
-        this.spreadConfiguration = new LinkedHashSet<>(List.of(BalanceComponent.FEES, BalanceComponent.INTEREST, BalanceComponent.PRINCIPAL));
+        this.spreadConfiguration = new LinkedHashSet<>(List.of(BalanceComponent.FEES, BalanceComponent.INTEREST,
+                BalanceComponent.PRINCIPAL));
     }
 
-    public ComputationalSpread(@NotNull MonetaryAmount amount, @NonNull Direction direction, LinkedHashSet<BalanceComponent> spreadConfiguration) {
+    public ComputationalSpread(@NotNull MonetaryAmount amount, @NonNull Direction direction,
+                               LinkedHashSet<BalanceComponent> spreadConfiguration) {
         super(direction);
         this.amount = amount;
         this.spreadConfiguration = spreadConfiguration;
@@ -64,46 +66,84 @@ public class ComputationalSpread extends TransactionSpreadStrategy {
         Balance updatedBalance = balance;
 
         if (Direction.CREDIT.equals(getDirection())) {
-            for (BalanceComponent component : spreadConfiguration) {
-                updatedBalance = updateBalanceForIncrease(updatedBalance, component, remainingAmount);
-                remainingAmount = Money.of(0, amount.getCurrency());
-            }
+            updatedBalance = applyCreditOperation(updatedBalance, remainingAmount);
         } else if (Direction.DEBIT.equals(getDirection())) {
-            for (BalanceComponent component : spreadConfiguration) {
-                var result = updateBalanceForDecrease(updatedBalance, component, remainingAmount);
-                updatedBalance = result.balance();
-                remainingAmount = result.remainingAmount();
-
-                if (remainingAmount.isZero() || remainingAmount.isNegative()) {
-                    break;
-                }
-            }
-
-            // Handle excess in case of decrease and remaining amount
-            if (!remainingAmount.isZero()) {
-                updatedBalance = new Balance(updatedBalance.principal(), updatedBalance.interest(), updatedBalance.fee(), updatedBalance.excess().add(remainingAmount));
-            }
+            updatedBalance = applyDebitOperation(updatedBalance, remainingAmount);
         }
 
         return updatedBalance;
     }
 
+    private Balance applyDebitOperation(Balance updatedBalance, MonetaryAmount remainingAmount) {
+        for (BalanceComponent component : spreadConfiguration) {
+            var result = updateBalanceForDecrease(updatedBalance, component, remainingAmount);
+            updatedBalance = result.balance();
+            remainingAmount = result.remainingAmount();
+
+            if (remainingAmount.isZero() || remainingAmount.isNegative()) {
+                break;
+            }
+        }
+
+        // Handle excess in case of decrease and remaining amount
+        if (!remainingAmount.isZero()) {
+            updatedBalance = new Balance(updatedBalance.principal(), updatedBalance.interest(),
+                    updatedBalance.fee(), updatedBalance.excess()
+                    .add(remainingAmount));
+        }
+        return updatedBalance;
+    }
+
+    private @NotNull Balance applyCreditOperation(Balance updatedBalance, MonetaryAmount remainingAmount) {
+        // If there is excess, reduce it first
+        if (!updatedBalance.excess().isZero()) {
+            MonetaryAmount excess = updatedBalance.excess();
+            if (excess.isGreaterThan(remainingAmount) || excess.equals(remainingAmount)) {
+                updatedBalance = new Balance(updatedBalance.principal(), updatedBalance.interest(),
+                        updatedBalance.fee(), excess.subtract(remainingAmount));
+                remainingAmount = Money.of(0, amount.getCurrency());
+            } else {
+                remainingAmount = remainingAmount.subtract(excess);
+                updatedBalance = new Balance(updatedBalance.principal(), updatedBalance.interest(),
+                        updatedBalance.fee(), Money.of(0, amount.getCurrency()));
+            }
+        }
+
+        // Then spread the remaining amount
+        for (BalanceComponent component : spreadConfiguration) {
+            updatedBalance = updateBalanceForIncrease(updatedBalance, component, remainingAmount);
+            remainingAmount = Money.of(0, amount.getCurrency());
+        }
+        return updatedBalance;
+    }
+
     private Balance updateBalanceForIncrease(Balance balance, BalanceComponent component, MonetaryAmount amount) {
         MonetaryAmount current = balance.get(component);
-        return new Balance(component == BalanceComponent.PRINCIPAL ? current.add(amount) : balance.principal(), component == BalanceComponent.INTEREST ? current.add(amount) : balance.interest(), component == BalanceComponent.FEES ? current.add(amount) : balance.fee(), balance.excess() // Excess is not affected by increase directly
+        return new Balance(component == BalanceComponent.PRINCIPAL ? current.add(amount) : balance.principal(),
+                component == BalanceComponent.INTEREST ? current.add(amount) : balance.interest(),
+                component == BalanceComponent.FEES ? current.add(amount) : balance.fee(), balance.excess() // Excess
+                // is not affected by increase directly
         );
     }
 
-    private Pair<Balance, MonetaryAmount> updateBalanceForDecrease(Balance balance, BalanceComponent component, MonetaryAmount amount) {
+    private Pair<Balance, MonetaryAmount> updateBalanceForDecrease(Balance balance, BalanceComponent component,
+                                                                   MonetaryAmount amount) {
         MonetaryAmount current = balance.get(component);
         if (current.isGreaterThan(amount) || current.equals(amount)) {
             // Component can cover the amount
-            return new Pair<>(new Balance(component == BalanceComponent.PRINCIPAL ? current.subtract(amount) : balance.principal(), component == BalanceComponent.INTEREST ? current.subtract(amount) : balance.interest(), component == BalanceComponent.FEES ? current.subtract(amount) : balance.fee(), balance.excess()), // Excess is not directly affected
+            return new Pair<>(new Balance(component == BalanceComponent.PRINCIPAL ? current.subtract(amount) :
+                    balance.principal(), component == BalanceComponent.INTEREST ? current.subtract(amount) :
+                    balance.interest(), component == BalanceComponent.FEES ? current.subtract(amount) : balance.fee()
+                    , balance.excess()), // Excess is not directly affected
                     Money.of(0, amount.getCurrency()));
         } else {
             // Component cannot cover the whole amount; remainder goes to next component or excess
             MonetaryAmount remainder = amount.subtract(current);
-            return new Pair<>(new Balance(component == BalanceComponent.PRINCIPAL ? Money.of(0, amount.getCurrency()) : balance.principal(), component == BalanceComponent.INTEREST ? Money.of(0, amount.getCurrency()) : balance.interest(), component == BalanceComponent.FEES ? Money.of(0, amount.getCurrency()) : balance.fee(), balance.excess()), // Excess is not directly affected
+            return new Pair<>(new Balance(component == BalanceComponent.PRINCIPAL ?
+                    Money.of(0, amount.getCurrency()) : balance.principal(), component == BalanceComponent.INTEREST ?
+                    Money.of(0, amount.getCurrency()) : balance.interest(), component == BalanceComponent.FEES ?
+                    Money.of(0, amount.getCurrency()) : balance.fee(), balance.excess()), // Excess is not directly
+                    // affected
                     remainder);
         }
     }

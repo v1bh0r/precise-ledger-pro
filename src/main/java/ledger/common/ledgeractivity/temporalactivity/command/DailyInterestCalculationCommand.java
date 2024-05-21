@@ -31,6 +31,15 @@ public class DailyInterestCalculationCommand implements TemporalActivityCommand 
         TemporalActivityCommandFactory.register(this);
     }
 
+    /**
+     * Executes the command to calculate the daily interest for the loan.
+     * <p>
+     * <b>Assumption</b>: We can never have a use-case in which we have an outstanding excess balance
+     * and still we have an interest computed > 0.
+     * This is because we can have an excess only if principal, interest, fee are all 0.
+     * A daily interest calculated over 0 principal will always be 0. Revisit if this assumption changes.
+     * </p>
+     */
     @Override
     public LedgerEntry execute(String nextLedgerEntryId, String loanId, Balance loanBalance, String activityType,
                                String activityId, LocalDateTime effectiveAt, TemporalActivityContext context) {
@@ -41,12 +50,9 @@ public class DailyInterestCalculationCommand implements TemporalActivityCommand 
         var interest = dailyInterestCalculator.calculateInterest(loanBalance.principal(), interestRates, daysInYear,
                 effectiveAt);
 
-        return new LedgerEntry(loanId, null, "Interest Accrual", toDouble(interest),
-                0.0, toDouble(interest),
-                0.0, 0.0,
-                toDouble(loanBalance.principal()), toDouble(loanBalance.interest()
+        return new LedgerEntry(loanId, null, "Interest Accrual", toDouble(interest), 0.0, toDouble(interest), 0.0,
+                0.0, toDouble(loanBalance.principal()), toDouble(loanBalance.interest()
                 .add(interest)), toDouble(loanBalance.fee()), toDouble(loanBalance.excess()), effectiveAt,
-                LocalDateTime.now(),
-                activityType, activityId);
+                LocalDateTime.now(), activityType, activityId);
     }
 }

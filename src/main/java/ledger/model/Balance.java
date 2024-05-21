@@ -18,7 +18,6 @@ public record Balance(MonetaryAmount principal, MonetaryAmount interest, Monetar
             case INTEREST -> interest;
             case FEES -> fee;
             case EXCESS -> excess;
-            default -> throw new IllegalArgumentException("Unknown component: " + component);
         };
     }
 
