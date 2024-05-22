@@ -19,7 +19,7 @@ steps:
         '--region=asia-south2',
         '--platform=managed',
         '--allow-unauthenticated',
-        '--set-env-vars', 'QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=none,QUARKUS_PROFILE=prod'
+        '--set-env-vars', 'QUARKUS_PROFILE=prod'
       ]
 options:
   logging: CLOUD_LOGGING_ONLY
