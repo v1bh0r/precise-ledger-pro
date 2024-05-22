@@ -8,7 +8,8 @@ import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import java.io.IOException;
 
-import static ledger.util.MonetaryUtil.DEFAULT_CURRENCY_CODE;
+import static ledger.config.AppConfig.DEFAULT_CURRENCY_CODE;
+
 
 public class MonetaryAmountDeserializer extends JsonDeserializer<MonetaryAmount> {
 

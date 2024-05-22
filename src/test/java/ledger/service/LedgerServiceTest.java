@@ -7,6 +7,7 @@ import ledger.common.Ledger;
 import ledger.common.LedgerActivityFactory;
 import ledger.common.ledgeractivity.ReversalActivity;
 import ledger.common.ledgeractivity.domain.InterestRate;
+import ledger.common.ledgeractivity.domain.Loan;
 import ledger.common.ledgeractivity.temporalactivity.StartOfDay;
 import ledger.common.ledgeractivity.temporalactivity.TemporalActivityContext;
 import ledger.model.*;
@@ -23,6 +24,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static ledger.config.AppConfig.DEFAULT_CURRENCY_CODE;
+import static ledger.config.AppConfig.DEFAULT_DAYS_IN_YEAR;
 import static ledger.service.BalanceService.createZeroBalance;
 import static ledger.util.MonetaryUtil.toDouble;
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,7 +38,8 @@ class LedgerServiceTest {
     private ObjectToCsvUtil<LedgerEntry> objectToCsvUtil;
     @Inject
     LedgerService ledgerService;
-
+    @Inject
+    LoanService loanService;
     @Inject
     LedgerActivityFactory ledgerActivityFactory;
     @Inject
@@ -110,7 +114,7 @@ class LedgerServiceTest {
                 InterestRate.class);
         var temporalContext = new TemporalActivityContext();
         temporalContext.setProperty("interestRates", interestRates);
-        temporalContext.setProperty("daysInYear", 365);
+        temporalContext.setProperty("daysInYear", DEFAULT_DAYS_IN_YEAR);
         temporalContext.setProperty("currencyCode", CURRENCY);
         return temporalContext;
     }
@@ -127,11 +131,10 @@ class LedgerServiceTest {
         var activities =
                 generalLedgerActivityCSVUtil.parse(DATA_PATH + "testReverseLedgerActivity/ledger_activities" + ".csv"
                         , GeneralLedgerActivity.class);
-        var ledgerActivities = activities.stream()
-                .map(activity -> {
-                    ledgerActivityRepository.insert(activity);
-                    return ledgerActivityFactory.create(activity);
-                }).toList();
+        var ledgerActivities = activities.stream().map(activity -> {
+            ledgerActivityRepository.insert(activity);
+            return ledgerActivityFactory.create(activity);
+        }).toList();
         ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock(), new TemporalActivityContext());
 
         // Verify
@@ -153,11 +156,10 @@ class LedgerServiceTest {
         var temporalContext = getSampleTemporalActivityContext();
         var ledger = createEmptyLedger();
         var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + x, GeneralLedgerActivity.class);
-        var ledgerActivities = activities.stream()
-                .map(activity -> {
-                    ledgerActivityRepository.insert(activity);
-                    return ledgerActivityFactory.create(activity);
-                }).toList();
+        var ledgerActivities = activities.stream().map(activity -> {
+            ledgerActivityRepository.insert(activity);
+            return ledgerActivityFactory.create(activity);
+        }).toList();
 
         // Act
         ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock(), temporalContext);
@@ -216,11 +218,10 @@ class LedgerServiceTest {
         var activities =
                 generalLedgerActivityCSVUtil.parse(DATA_PATH + "testReverseLedgerActivity/ledger_activities" + ".csv"
                         , GeneralLedgerActivity.class);
-        var ledgerActivities = activities.stream()
-                .map(activity -> {
-                    ledgerActivityRepository.insert(activity);
-                    return ledgerActivityFactory.create(activity);
-                }).toList();
+        var ledgerActivities = activities.stream().map(activity -> {
+            ledgerActivityRepository.insert(activity);
+            return ledgerActivityFactory.create(activity);
+        }).toList();
         ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock(), new TemporalActivityContext());
 
         var temporalContext = getSampleTemporalActivityContext();
@@ -243,8 +244,7 @@ class LedgerServiceTest {
 
         // Act
         assertThrows(RuntimeException.class, () -> ledgerService.reverseLedgerActivity(reversalActivity, ledger,
-                new LedgerClock(),
-                new TemporalActivityContext()));
+                new LedgerClock(), new TemporalActivityContext()));
     }
 
     @Test
@@ -259,8 +259,7 @@ class LedgerServiceTest {
 
         // Act
         assertThrows(RuntimeException.class, () -> ledgerService.reverseLedgerActivity(reversalActivity, ledger,
-                new LedgerClock(),
-                new TemporalActivityContext()));
+                new LedgerClock(), new TemporalActivityContext()));
     }
 
     @Test
@@ -274,12 +273,55 @@ class LedgerServiceTest {
 
         // Act
         assertThrows(RuntimeException.class, () -> ledgerService.reverseLedgerActivity(reversalActivity, ledger,
-                new LedgerClock(),
-                new TemporalActivityContext()));
+                new LedgerClock(), new TemporalActivityContext()));
+    }
+
+    @Test
+    @Transactional
+    void whenLedgerHasAFreezeDateAndAStartingBalance() {
+        // Setup
+        var loanCutOff = LocalDateTime.now().minusDays(30);
+        var loan = Loan.builder()
+                .lastLedgerFrozenOn(loanCutOff).lastLedgerFreezePrincipalBalance(1000.0)
+                .lastLedgerFreezeInterestBalance(200.0).lastLedgerFreezeFeeBalance(300.0)
+                .lastLedgerFreezeExcessBalance(0.0).build();
+
+        loan.persist();
+
+        var interestRate = InterestRate.builder()
+                .loanId(loan.getId().toString())
+                .rate(0.1f)
+                .effectiveAt(loanCutOff)
+                .build();
+
+        interestRate.persist();
+
+        var today = loanCutOff.plusDays(7);
+        // Act
+        var generalActivity = GeneralLedgerActivity.builder()
+                .loanId(LOAN_ID)
+                .activityType("Transaction")
+                .activityId("1")
+                .commonName("Disbursal")
+                .direction("CREDIT")
+                .transactionStrategy("ComputationalSpread")
+                .amount(2000.0)
+                .spread("P")
+                .effectiveAt(today)
+                .transactionTime(today)
+                .build();
+
+        var ledger = ledgerService.getLedger(loan.getId());
+        ledgerService.applyLedgerActivities(ledger, List.of(ledgerActivityFactory.create(generalActivity)),
+                ledgerService.getCurrentLedgerClock(ledger), loanService.getTemporalActivityContext(loan.getId()));
+
+        // Verify
+        assertEquals(3000.0, toDouble(ledger.getCurrentBalance().principal()));
     }
 
     private Ledger initLedger(String path) throws IOException {
         var ledgerEntries = ledgerEntryCSVUtil.parse(DATA_PATH + path, LedgerEntry.class);
-        return new Ledger(LOAN_ID, createZeroBalance(CURRENCY), ledgerEntries, CURRENCY);
+        return new Ledger(LOAN_ID, createZeroBalance(DEFAULT_CURRENCY_CODE), ledgerEntries,
+                DEFAULT_CURRENCY_CODE);
     }
 }

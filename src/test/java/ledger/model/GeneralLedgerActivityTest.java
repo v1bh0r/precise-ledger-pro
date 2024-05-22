@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-import static ledger.util.MonetaryUtil.getDefaultCurrencyCode;
+import static ledger.config.AppConfig.DEFAULT_CURRENCY_CODE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -47,14 +47,14 @@ class GeneralLedgerActivityTest {
         assertEquals("Test Spread", activity.getSpread());
         assertEquals("Test Reversal Type", activity.getReversalActivityType());
         assertEquals("9012", activity.getReversalActivityId());
-        assertEquals(Money.of(100.0, getDefaultCurrencyCode()), activity.getAmount());
+        assertEquals(Money.of(100.0, DEFAULT_CURRENCY_CODE), activity.getAmount());
         assertEquals(LocalDateTime.parse("2022-01-01T00:00:00", DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 activity.getEffectiveAt());
         assertEquals(LocalDateTime.parse("2022-01-01T00:00:00", DateTimeFormatter.ISO_LOCAL_DATE_TIME),
                 activity.getTransactionTime());
-        assertEquals(Money.of(100.0, getDefaultCurrencyCode()), activity.getPrincipal());
-        assertEquals(Money.of(10.0, getDefaultCurrencyCode()), activity.getInterest());
-        assertEquals(Money.of(5.0, getDefaultCurrencyCode()), activity.getFee());
-        assertEquals(Money.of(0.0, getDefaultCurrencyCode()), activity.getExcess());
+        assertEquals(Money.of(100.0, DEFAULT_CURRENCY_CODE), activity.getPrincipal());
+        assertEquals(Money.of(10.0, DEFAULT_CURRENCY_CODE), activity.getInterest());
+        assertEquals(Money.of(5.0, DEFAULT_CURRENCY_CODE), activity.getFee());
+        assertEquals(Money.of(0.0, DEFAULT_CURRENCY_CODE), activity.getExcess());
     }
 }

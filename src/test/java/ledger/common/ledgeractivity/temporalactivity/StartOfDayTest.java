@@ -15,25 +15,26 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static ledger.config.AppConfig.DEFAULT_CURRENCY_CODE;
+import static ledger.config.AppConfig.DEFAULT_DAYS_IN_YEAR;
 import static ledger.util.DateTimeUtil.DB_SAFE_LOCAL_DATETIME_MIN;
 import static ledger.util.MonetaryUtil.toMonetaryAmount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @QuarkusTest
 class StartOfDayTest {
-    private static final String CURRENCY = "USD";
     @Inject
     BalanceService balanceService;
 
     private static final String LOAN_ID = "12345";
 
     private Ledger createLedger(Balance startingBalance) {
-        return new Ledger(LOAN_ID, startingBalance, new ArrayList<>(), CURRENCY);
+        return new Ledger(LOAN_ID, startingBalance, new ArrayList<>(), DEFAULT_CURRENCY_CODE);
     }
 
     @Test
     void applyTo() {
-        var ledger = createLedger(balanceService.createBalance(10000, 100, 10, 0, CURRENCY));
+        var ledger = createLedger(balanceService.createBalance(10000, 100, 10, 0, DEFAULT_CURRENCY_CODE));
         var temporalContext = new TemporalActivityContext();
 
         var interestRate = new InterestRate();
@@ -42,8 +43,8 @@ class StartOfDayTest {
         interestRate.setEffectiveAt(DB_SAFE_LOCAL_DATETIME_MIN);
         interestRate.setLoanId(LOAN_ID);
         temporalContext.setProperty("interestRates", List.of(interestRate));
-        temporalContext.setProperty("daysInYear", 365);
-        temporalContext.setProperty("currencyCode", CURRENCY);
+        temporalContext.setProperty("daysInYear", DEFAULT_DAYS_IN_YEAR);
+        temporalContext.setProperty("currencyCode", DEFAULT_CURRENCY_CODE);
 
         var sod = new StartOfDay(LOAN_ID, "SOD", LocalDate.now().atStartOfDay().plusHours(5));
         sod.applyTo(ledger, new LedgerClock(), temporalContext);
