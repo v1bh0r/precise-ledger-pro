@@ -115,6 +115,11 @@ public class LedgerEntry extends PanacheEntityBase implements Cloneable {
     @NonNull
     private String sourceLedgerActivityId;
 
+    public String getIdempotencyKey() {
+        return String.format("%s-%s-%s-%s-%s-%s", loanId, entryId, entryType, sourceLedgerActivityType,
+                sourceLedgerActivityId, effectiveAt);
+    }
+
     public Balance getBalance() {
         return new Balance(principalBalance, interestBalance, feeBalance, excessBalance);
     }
