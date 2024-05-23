@@ -30,6 +30,7 @@ public class Ledger implements Cloneable {
         // Check idempotency using getIdempotencyKey
         if (entries.stream()
                 .anyMatch(existingEntry -> existingEntry.getIdempotencyKey().equals(newEntry.getIdempotencyKey()))) {
+            // TODO: Why are we getting into this situation in the first place?
             return;
         }
         entries.add(newEntry);
