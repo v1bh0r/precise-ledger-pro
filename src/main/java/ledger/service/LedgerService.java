@@ -191,7 +191,8 @@ public class LedgerService {
         String ledgerActivityId = reversalActivity.getReversedActivityId();
 
         // Add a compensation ledger entry to reverse the impact of the activity
-        final var compensationEntry = buildCompensationLedgerEntry(ledgerActivityType, ledgerActivityId, ledger);
+        final var compensationEntry = buildCompensationLedgerEntry(ledgerActivityType, ledgerActivityId, ledger,
+                reversalActivity.getEffectiveAt());
         ledger.addEntry(compensationEntry);
 
         // Rollback the ledger to before the reversed activity as a retroactive ledger
@@ -218,7 +219,8 @@ public class LedgerService {
      * Builds a compensation ledger entry to reverse the impact of the activity
      */
     private LedgerEntry buildCompensationLedgerEntry(@NotNull String ledgerActivityType,
-                                                     @NotNull String ledgerActivityId, @NotNull Ledger ledger) {
+                                                     @NotNull String ledgerActivityId, @NotNull Ledger ledger,
+                                                     @NonNull LocalDateTime reversalEffectiveAt) {
         if (ledgerActivityType.isBlank() || ledgerActivityId.isBlank()) {
             throw new IllegalArgumentException("LedgerActivityType and LedgerActivityId cannot be blank");
         }
@@ -233,7 +235,7 @@ public class LedgerService {
         var negatedImpact = impactOfReversedActivity.negate();
         var newLedgerBalance = ledger.getCurrentBalance().add(negatedImpact);
         return LedgerEntry.builder().loanId(ledger.getLoanId()).amount(toDouble(negatedImpact.getTotalAmount()))
-                .createdAt(LocalDateTime.now()).effectiveAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now()).effectiveAt(reversalEffectiveAt)
                 .principal(toDouble(negatedImpact.principal()))
                 .interest(toDouble(negatedImpact.interest())).fee(toDouble(negatedImpact.fee()))
                 .excess(toDouble(negatedImpact.excess()))
