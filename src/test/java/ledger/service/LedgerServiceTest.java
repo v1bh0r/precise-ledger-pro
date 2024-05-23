@@ -27,6 +27,7 @@ import java.util.List;
 import static ledger.config.AppConfig.DEFAULT_CURRENCY_CODE;
 import static ledger.config.AppConfig.DEFAULT_DAYS_IN_YEAR;
 import static ledger.service.BalanceService.createZeroBalance;
+import static ledger.util.DateTimeUtil.DB_SAFE_LOCAL_DATETIME_MIN;
 import static ledger.util.MonetaryUtil.toDouble;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -281,35 +282,22 @@ class LedgerServiceTest {
     void whenLedgerHasAFreezeDateAndAStartingBalance() {
         // Setup
         var loanCutOff = LocalDateTime.now().minusDays(30);
-        var loan = Loan.builder()
-                .lastLedgerFrozenOn(loanCutOff).lastLedgerFreezePrincipalBalance(1000.0)
+        var loan = Loan.builder().lastLedgerFrozenOn(loanCutOff).lastLedgerFreezePrincipalBalance(1000.0)
                 .lastLedgerFreezeInterestBalance(200.0).lastLedgerFreezeFeeBalance(300.0)
                 .lastLedgerFreezeExcessBalance(0.0).build();
 
         loan.persist();
 
-        var interestRate = InterestRate.builder()
-                .loanId(loan.getId().toString())
-                .rate(0.1f)
-                .effectiveAt(loanCutOff)
+        var interestRate = InterestRate.builder().loanId(loan.getId().toString()).rate(0.1f).effectiveAt(loanCutOff)
                 .build();
 
         interestRate.persist();
 
         var today = loanCutOff.plusDays(7);
         // Act
-        var generalActivity = GeneralLedgerActivity.builder()
-                .loanId(LOAN_ID)
-                .activityType("Transaction")
-                .activityId("1")
-                .commonName("Disbursal")
-                .direction("CREDIT")
-                .transactionStrategy("ComputationalSpread")
-                .amount(2000.0)
-                .spread("P")
-                .effectiveAt(today)
-                .transactionTime(today)
-                .build();
+        var generalActivity = GeneralLedgerActivity.builder().loanId(LOAN_ID).activityType("Transaction")
+                .activityId("1").commonName("Disbursal").direction("CREDIT").transactionStrategy("ComputationalSpread")
+                .amount(2000.0).spread("P").effectiveAt(today).transactionTime(today).build();
 
         var ledger = ledgerService.getLedger(loan.getId());
         ledgerService.applyLedgerActivities(ledger, List.of(ledgerActivityFactory.create(generalActivity)),
@@ -319,9 +307,40 @@ class LedgerServiceTest {
         assertEquals(3000.0, toDouble(ledger.getCurrentBalance().principal()));
     }
 
+    @Test
+    @Transactional
+        // precise-ledger-pro-20
+    void bug_preciseLedgerPro_20() throws IOException, IllegalAccessException {
+        // Setup
+        var interestRates = List.of(InterestRate.builder().loanId(LOAN_ID).rate(0.1845f)
+                .effectiveAt(DB_SAFE_LOCAL_DATETIME_MIN).build());
+        var temporalContext = new TemporalActivityContext();
+        temporalContext.setProperty("interestRates", interestRates);
+        temporalContext.setProperty("daysInYear", DEFAULT_DAYS_IN_YEAR);
+        temporalContext.setProperty("currencyCode", CURRENCY);
+
+        var ledger = createEmptyLedger();
+        var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + "bug/precise-ledger-pro-20/ledger-activities" +
+                ".csv", GeneralLedgerActivity.class);
+        var ledgerActivities = activities.stream().map(activity -> {
+            var ledgerActivity = ledgerActivityFactory.create(activity);
+            ledgerActivityRepository.insert(activity);
+            return ledgerActivity;
+        }).toList();
+
+        // Act
+        ledgerService.applyLedgerActivities(ledger, ledgerActivities, new LedgerClock(DB_SAFE_LOCAL_DATETIME_MIN),
+                temporalContext);
+
+        objectToCsvUtil.writeListToCsv(ledger.getEntries(), BASE_TEST_OUTPUT_DIR + "bug_preciseLedgerPro_20.csv");
+
+        // Verify
+        checkLedgerAgainstLedgerActivityImpactExpectations(ledger, DATA_PATH + "bug/precise-ledger-pro-20" +
+                "/expectations.csv");
+    }
+
     private Ledger initLedger(String path) throws IOException {
         var ledgerEntries = ledgerEntryCSVUtil.parse(DATA_PATH + path, LedgerEntry.class);
-        return new Ledger(LOAN_ID, createZeroBalance(DEFAULT_CURRENCY_CODE), ledgerEntries,
-                DEFAULT_CURRENCY_CODE);
+        return new Ledger(LOAN_ID, createZeroBalance(DEFAULT_CURRENCY_CODE), ledgerEntries, DEFAULT_CURRENCY_CODE);
     }
 }
