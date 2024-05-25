@@ -1,0 +1,241 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to provision VPC, Security Groups, Aurora Serverless, ECR Repository, and App Runner with minimal IP range for Precise Ledger Pro Demo.
+
+Resources:
+  # VPC
+  PreciseLedgerProDemoVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/24  # Larger VPC to allow more subnets
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: precise-ledger-pro-demo-vpc
+
+  # Subnets
+  PreciseLedgerProDemoSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref PreciseLedgerProDemoVPC
+      CidrBlock: 10.0.0.0/28  # Small subnet
+      AvailabilityZone: !Select [ 0, !GetAZs "" ]  # Correctly select an AZ
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: precise-ledger-pro-demo-subnet-1
+
+  PreciseLedgerProDemoSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref PreciseLedgerProDemoVPC
+      CidrBlock: 10.0.0.16/28  # Another small subnet in a different AZ
+      AvailabilityZone: !Select [ 1, !GetAZs "" ]  # Correctly select another AZ
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: precise-ledger-pro-demo-subnet-2
+
+  # Internet Gateway
+  PreciseLedgerProDemoInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: precise-ledger-pro-demo-igw
+
+  PreciseLedgerProDemoGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref PreciseLedgerProDemoVPC
+      InternetGatewayId: !Ref PreciseLedgerProDemoInternetGateway
+
+  # Route Table
+  PreciseLedgerProDemoRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref PreciseLedgerProDemoVPC
+      Tags:
+        - Key: Name
+          Value: precise-ledger-pro-demo-route-table
+
+  PreciseLedgerProDemoRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PreciseLedgerProDemoRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref PreciseLedgerProDemoInternetGateway
+
+  PreciseLedgerProDemoSubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PreciseLedgerProDemoSubnet1
+      RouteTableId: !Ref PreciseLedgerProDemoRouteTable
+
+  PreciseLedgerProDemoSubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PreciseLedgerProDemoSubnet2
+      RouteTableId: !Ref PreciseLedgerProDemoRouteTable
+
+  # Security Groups
+  PreciseLedgerProDemoAuroraSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Postgres access
+      VpcId: !Ref PreciseLedgerProDemoVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !GetAtt PreciseLedgerProDemoAppRunnerSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: precise-ledger-pro-demo-aurora-sg
+
+  PreciseLedgerProDemoAppRunnerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow inbound traffic for App Runner
+      VpcId: !Ref PreciseLedgerProDemoVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080  # Internal port used by the application
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: precise-ledger-pro-demo-app-runner-sg
+
+  # Aurora Serverless
+  PreciseLedgerProDemoAuroraDBCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      Engine: aurora-postgresql
+      EngineMode: serverless
+      ScalingConfiguration:
+        AutoPause: true
+        MaxCapacity: 2
+        MinCapacity: 2
+        SecondsUntilAutoPause: 300
+      MasterUsername: masteruser
+      MasterUserPassword: masterpassword
+      DBSubnetGroupName: !Ref PreciseLedgerProDemoDBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref PreciseLedgerProDemoAuroraSecurityGroup
+      Tags:
+        - Key: Name
+          Value: precise-ledger-pro-demo-aurora-serverless-cluster
+
+  PreciseLedgerProDemoDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Aurora Serverless
+      SubnetIds:
+        - !Ref PreciseLedgerProDemoSubnet1
+        - !Ref PreciseLedgerProDemoSubnet2
+      Tags:
+        - Key: Name
+          Value: precise-ledger-pro-demo-db-subnet-group
+
+  # ECR Repository
+  PreciseLedgerProDemoECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: precise-ledger-pro-demo
+      Tags:
+        - Key: Name
+          Value: precise-ledger-pro-demo-ecr-repo
+
+  # App Runner Service
+  PreciseLedgerProDemoAppRunnerService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: precise-ledger-app-runner
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !GetAtt PreciseLedgerProDemoAppRunnerECRAccessRole.Arn
+        AutoDeploymentsEnabled: true
+        ImageRepository:
+          ImageIdentifier: !Sub "${PreciseLedgerProDemoECRRepository.RepositoryUri}:latest"
+          ImageRepositoryType: ECR
+      InstanceConfiguration:
+        InstanceRoleArn: !GetAtt PreciseLedgerProDemoAppRunnerServiceInstanceRole.Arn
+      NetworkConfiguration:
+        EgressConfiguration:
+          EgressType: DEFAULT  # Use default egress type
+
+  PreciseLedgerProDemoAppRunnerVpcConnector:
+    Type: AWS::AppRunner::VpcConnector
+    Properties:
+      VpcConnectorName: precise-ledger-vpc-connector
+      Subnets:
+        - !Ref PreciseLedgerProDemoSubnet1
+        - !Ref PreciseLedgerProDemoSubnet2
+      SecurityGroups:
+        - !Ref PreciseLedgerProDemoAppRunnerSecurityGroup
+
+  # IAM Role for App Runner to access ECR
+  PreciseLedgerProDemoAppRunnerECRAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ECRAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                Resource: "*"
+
+  # IAM Role for App Runner Service Instances
+  PreciseLedgerProDemoAppRunnerServiceInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ServiceInstancePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:CreateLogGroup
+                Resource: arn:aws:logs:*:*
+
+  PreciseLedgerProDemoAppRunnerServiceInstanceRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: precise-ledger-pro-demo-service-instance-policy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:CreateLogGroup
+            Resource: arn:aws:logs:*:*:log-group:*
+      Roles:
+        - !Ref PreciseLedgerProDemoAppRunnerServiceInstanceRole
