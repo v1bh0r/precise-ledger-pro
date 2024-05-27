@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: AWS CloudFormation Template to provision VPC, Security Groups, Aurora Serverless, ECR Repository, and App Runner with minimal IP range for Precise Ledger Pro Demo.
+Description: IAM Resources for Precise Ledger Pro Demo.
 
 Resources:
   # IAM Role for App Runner Service Instances
@@ -41,6 +41,7 @@ Resources:
             Resource: arn:aws:logs:*:*:log-group:*
       Roles:
         - !Ref PreciseLedgerProDemoAppRunnerServiceInstanceRole
+
   # IAM Role for App Runner to access ECR
   PreciseLedgerProDemoAppRunnerECRAccessRole:
     Type: AWS::IAM::Role
