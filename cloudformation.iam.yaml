@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to provision VPC, Security Groups, Aurora Serverless, ECR Repository, and App Runner with minimal IP range for Precise Ledger Pro Demo.
+
+Resources:
+  # IAM Role for App Runner Service Instances
+  PreciseLedgerProDemoAppRunnerServiceInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ServiceInstancePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:CreateLogGroup
+                Resource: arn:aws:logs:*:*
+
+  # IAM Policy for App Runner Service Instances
+  PreciseLedgerProDemoAppRunnerServiceInstanceRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: precise-ledger-pro-demo-service-instance-policy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:CreateLogGroup
+            Resource: arn:aws:logs:*:*:log-group:*
+      Roles:
+        - !Ref PreciseLedgerProDemoAppRunnerServiceInstanceRole
+  # IAM Role for App Runner to access ECR
+  PreciseLedgerProDemoAppRunnerECRAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ECRAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                Resource: "*"
+
+Outputs:
+  AppRunnerServiceInstanceRoleArn:
+    Value: !GetAtt PreciseLedgerProDemoAppRunnerServiceInstanceRole.Arn
+    Export:
+      Name: AppRunnerServiceInstanceRoleArn
+
+  AppRunnerECRAccessRoleArn:
+    Value: !GetAtt PreciseLedgerProDemoAppRunnerECRAccessRole.Arn
+    Export:
+      Name: AppRunnerECRAccessRoleArn
