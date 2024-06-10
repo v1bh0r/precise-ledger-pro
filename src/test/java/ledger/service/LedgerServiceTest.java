@@ -312,6 +312,18 @@ class LedgerServiceTest {
         // precise-ledger-pro-20
     void bug_preciseLedgerPro_20() throws IOException, IllegalAccessException {
         // Setup
+        regularBugReplication("bug/precise-ledger-pro-20/ledger-activities");
+    }
+
+//    @Test
+//    @Transactional
+//        // precise-ledger-pro-21
+//    void bug_preciseLedgerPro_21() throws IOException, IllegalAccessException {
+//        regularBugReplication("bug/precise-ledger-pro-21/ledger-activities");
+//    }
+
+    private void regularBugReplication(String pathToBugResources) throws IOException, IllegalAccessException {
+        // Setup
         var interestRates = List.of(InterestRate.builder().loanId(LOAN_ID).rate(0.1845f)
                 .effectiveAt(DB_SAFE_LOCAL_DATETIME_MIN).build());
         var temporalContext = new TemporalActivityContext();
@@ -320,7 +332,7 @@ class LedgerServiceTest {
         temporalContext.setProperty("currencyCode", CURRENCY);
 
         var ledger = createEmptyLedger();
-        var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + "bug/precise-ledger-pro-20/ledger-activities" +
+        var activities = generalLedgerActivityCSVUtil.parse(DATA_PATH + pathToBugResources +
                 ".csv", GeneralLedgerActivity.class);
         var ledgerActivities = activities.stream().map(activity -> {
             var ledgerActivity = ledgerActivityFactory.create(activity);

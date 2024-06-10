@@ -1,0 +1,35 @@
+activityId,commonName,activityType,transactionStrategy,direction,spread,reversalActivityType,reversalActivityId,amount,effectiveAt,transactionTime,principal,interest,fee,excess,loanId
+1,Disbursal,Transaction,ComputationalSpread,CREDIT,P,,,12000,2024-03-01T00:00:00,2024-03-01T00:00:00,,,,,1234
+2,SOD,StartOfDay,,,,,,,2024-03-02T00:00:00,2024-03-02T00:00:00,,,,,1234
+3,SOD,StartOfDay,,,,,,,2024-03-03T00:00:00,2024-03-03T00:00:00,,,,,1234
+4,Payment,Transaction,ComputationalSpread,DEBIT,IPF,,,42.34,2024-03-03T00:05:00,2024-03-03T00:05:00,,,,,1234
+5,SOD,StartOfDay,,,,,,,2024-03-04T00:00:00,2024-03-04T00:00:00,,,,,1234
+6,SOD,StartOfDay,,,,,,,2024-03-05T00:00:00,2024-03-05T00:00:00,,,,,1234
+7,Payment,Transaction,ComputationalSpread,DEBIT,IPF,,,42.34,2024-03-05T00:05:00,2024-03-05T00:05:00,,,,,1234
+8,SOD,StartOfDay,,,,,,,2024-03-06T00:00:00,2024-03-06T00:00:00,,,,,1234
+9,SOD,StartOfDay,,,,,,,2024-03-07T00:00:00,2024-03-07T00:00:00,,,,,1234
+10,Payment,Transaction,ComputationalSpread,DEBIT,IPF,,,42.34,2024-03-07T00:05:00,2024-03-07T00:05:00,,,,,1234
+11,SOD,StartOfDay,,,,,,,2024-03-08T00:00:00,2024-03-08T00:00:00,,,,,1234
+12,SOD,StartOfDay,,,,,,,2024-03-09T00:00:00,2024-03-09T00:00:00,,,,,1234
+13,Reversal - Payment P123,Reversal,,,,Transaction,10,,2024-03-09T00:10:00,2024-03-09T00:10:00,,,,,1234
+14,SOD,StartOfDay,,,,,,,2024-03-10T00:00:00,2024-03-10T00:00:00,,,,,1234
+15,SOD,StartOfDay,,,,,,,2024-03-11T00:00:00,2024-03-11T00:00:00,,,,,1234
+16,Payment,Transaction,ComputationalSpread,DEBIT,IPF,,,42.34,2024-03-11T00:05:00,2024-03-11T00:05:00,,,,,1234
+17,SOD,StartOfDay,,,,,,,2024-03-12T00:00:00,2024-03-12T00:00:00,,,,,1234
+18,SOD,StartOfDay,,,,,,,2024-03-13T00:00:00,2024-03-13T00:00:00,,,,,1234
+19,Payment,Transaction,ComputationalSpread,DEBIT,IPF,,,42.34,2024-03-13T00:05:00,2024-03-13T00:05:00,,,,,1234
+20,SOD,StartOfDay,,,,,,,2024-03-14T00:00:00,2024-03-14T00:00:00,,,,,1234
+21,SOD,StartOfDay,,,,,,,2024-03-15T00:00:00,2024-03-15T00:00:00,,,,,1234
+22,Payment,Transaction,ComputationalSpread,DEBIT,IPF,,,42.34,2024-03-15T00:05:00,2024-03-15T00:05:00,,,,,1234
+23,SOD,StartOfDay,,,,,,,2024-03-16T00:00:00,2024-03-16T00:00:00,,,,,1234
+24,SOD,StartOfDay,,,,,,,2024-03-17T00:00:00,2024-03-17T00:00:00,,,,,1234
+25,Payment,Transaction,ComputationalSpread,DEBIT,IPF,,,42.34,2024-03-12T00:05:00,2024-03-17T00:30:00,,,,,1234
+26,SOD,StartOfDay,,,,,,,2024-03-18T00:00:00,2024-03-18T00:00:00,,,,,1234
+27,SOD,StartOfDay,,,,,,,2024-03-19T00:00:00,2024-03-19T00:00:00,,,,,1234
+28,Reversal - Payment P123,Reversal,,,,Transaction,16,,2024-03-19T00:10:00,2024-03-19T00:10:00,,,,,1234
+29,Reversal - Payment P123,Reversal,,,,Transaction,4,,2024-03-19T00:30:00,2024-03-19T00:30:00,,,,,1234
+30,SOD,StartOfDay,,,,,,,2024-03-20T00:00:00,2024-03-20T00:00:00,,,,,1234
+31,SOD,StartOfDay,,,,,,,2024-03-21T00:00:00,2024-03-21T00:00:00,,,,,1234
+32,Payment,Transaction,ComputationalSpread,DEBIT,IPF,,,42.34,2024-03-08T00:05:00,2024-03-21T00:05:00,,,,,1234
+33,SOD,StartOfDay,,,,,,,2024-03-22T00:00:00,2024-03-22T00:00:00,,,,,1234
+34,SOD,StartOfDay,,,,,,,2024-03-23T00:00:00,2024-03-23T00:00:00,,,,,1234
