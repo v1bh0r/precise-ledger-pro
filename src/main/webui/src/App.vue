@@ -1,85 +1,61 @@
 <script setup>
+import { ref, watchEffect, computed } from 'vue'
+import { useStore } from 'vuex'
 import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+
+const store = useStore()
+const message = computed(() => store.state.message)
+const errorMessage = computed(() => store.state.errorMessage)
+const messageKey = ref(0)
+const errorMessageKey = ref(0)
+
+watchEffect(() => {
+  if (message.value) {
+    messageKey.value++
+    setTimeout(() => {
+      store.commit('setMessage', '')
+    }, 5000) // 5 seconds
+  }
+})
+
+watchEffect(() => {
+  if (errorMessage.value) {
+    errorMessageKey.value++
+    setTimeout(() => {
+      store.commit('setErrorMessage', '')
+    }, 5000) // 5 seconds
+  }
+})
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
+  <header class="uk-background-primary uk-light uk-padding-small uk-position-z-index">
+    <nav class="uk-navbar-container uk-navbar-transparent" uk-navbar>
+      <div class="uk-navbar-left">
+        <RouterLink class="uk-navbar-item uk-logo" to="/">
+          <span uk-icon="icon: check; ratio: 2"></span>
+          <span>Precise Ledger Pro</span>
+        </RouterLink>
+      </div>
+      <div class="uk-navbar-right">
+        <ul class="uk-navbar-nav">
+          <li><a href="#">About</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
+    </nav>
   </header>
 
-  <RouterView />
+  <div class="uk-grid-collapse uk-grid-match" uk-grid>
+    <!-- Main Content Area -->
+    <div class="uk-width-expand@s uk-padding-small">
+      <div v-show="message" :key="messageKey" class="uk-alert-success" uk-alert>
+        <p>{{ message }}</p>
+      </div>
+      <div v-show="errorMessage" :key="errorMessageKey" class="uk-alert-danger" uk-alert>
+        <p>{{ errorMessage }}</p>
+      </div>
+      <RouterView />
+    </div>
+  </div>
 </template>
-
-<style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
-}
-</style>
