@@ -3,7 +3,7 @@ Description: IAM Resources for Precise Ledger Pro Demo.
 
 Resources:
   # IAM Role for App Runner Service Instances
-  PreciseLedgerProDemoAppRunnerServiceInstanceRole:
+  AppRunnerServiceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -14,7 +14,7 @@ Resources:
               Service: apprunner.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: ServiceInstancePolicy
+        - PolicyName: AppRunnerServicePolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -26,10 +26,10 @@ Resources:
                 Resource: arn:aws:logs:*:*
 
   # IAM Policy for App Runner Service Instances
-  PreciseLedgerProDemoAppRunnerServiceInstanceRolePolicy:
+  AppRunnerServiceRolePolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: precise-ledger-pro-demo-service-instance-policy
+      PolicyName: app-runner-service-policy
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -40,10 +40,10 @@ Resources:
               - logs:CreateLogGroup
             Resource: arn:aws:logs:*:*:log-group:*
       Roles:
-        - !Ref PreciseLedgerProDemoAppRunnerServiceInstanceRole
+        - !Ref AppRunnerServiceRole
 
   # IAM Role for App Runner to access ECR
-  PreciseLedgerProDemoAppRunnerECRAccessRole:
+  AppRunnerECRRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -66,12 +66,12 @@ Resources:
                 Resource: "*"
 
 Outputs:
-  AppRunnerServiceInstanceRoleArn:
-    Value: !GetAtt PreciseLedgerProDemoAppRunnerServiceInstanceRole.Arn
+  AppRunnerServiceRoleArn:
+    Value: !GetAtt AppRunnerServiceRole.Arn
     Export:
-      Name: AppRunnerServiceInstanceRoleArn
+      Name: AppRunnerServiceRoleArn
 
-  AppRunnerECRAccessRoleArn:
-    Value: !GetAtt PreciseLedgerProDemoAppRunnerECRAccessRole.Arn
+  AppRunnerECRRoleArn:
+    Value: !GetAtt AppRunnerECRRole.Arn
     Export:
-      Name: AppRunnerECRAccessRoleArn
+      Name: AppRunnerECRRoleArn

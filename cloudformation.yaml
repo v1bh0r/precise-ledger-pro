@@ -6,7 +6,7 @@ Resources:
   PreciseLedgerProDemoVPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 10.0.0.0/24  # Larger VPC to allow more subnets
+      CidrBlock: 10.0.0.0/24
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
@@ -18,8 +18,8 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref PreciseLedgerProDemoVPC
-      CidrBlock: 10.0.0.0/28  # Small subnet
-      AvailabilityZone: !Select [ 0, !GetAZs "" ]  # Correctly select an AZ
+      CidrBlock: 10.0.0.0/28
+      AvailabilityZone: !Select [ 0, !GetAZs "" ]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -29,8 +29,8 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref PreciseLedgerProDemoVPC
-      CidrBlock: 10.0.0.16/28  # Another small subnet in a different AZ
-      AvailabilityZone: !Select [ 1, !GetAZs "" ]  # Correctly select another AZ
+      CidrBlock: 10.0.0.16/28
+      AvailabilityZone: !Select [ 1, !GetAZs "" ]
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -100,11 +100,11 @@ Resources:
       VpcId: !Ref PreciseLedgerProDemoVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 8080  # Internal port used by the application
+          FromPort: 8080
           ToPort: 8080
           CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
-        - IpProtocol: "-1"  # Allow all traffic
+        - IpProtocol: "-1"
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
@@ -150,24 +150,24 @@ Resources:
         - Key: Name
           Value: precise-ledger-pro-demo-ecr-repo
 
-  PreciseLedgerProDemoAppRunnerService:
+  AppRunnerService:
     Type: AWS::AppRunner::Service
     Properties:
       ServiceName: precise-ledger-app-runner
       SourceConfiguration:
         AuthenticationConfiguration:
-          AccessRoleArn: !ImportValue AppRunnerECRAccessRoleArn
+          AccessRoleArn: !ImportValue AppRunnerECRRoleArn
         AutoDeploymentsEnabled: true
         ImageRepository:
           ImageIdentifier: !Sub "${PreciseLedgerProDemoECRRepository.RepositoryUri}:latest"
           ImageRepositoryType: ECR
       InstanceConfiguration:
-        InstanceRoleArn: !ImportValue AppRunnerServiceInstanceRoleArn
+        InstanceRoleArn: !ImportValue AppRunnerServiceRoleArn
       NetworkConfiguration:
         EgressConfiguration:
-          EgressType: DEFAULT  # Use default egress type
+          EgressType: DEFAULT
 
-  PreciseLedgerProDemoAppRunnerVpcConnector:
+  AppRunnerVpcConnector:
     Type: AWS::AppRunner::VpcConnector
     Properties:
       VpcConnectorName: precise-ledger-vpc-connector
