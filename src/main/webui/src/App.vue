@@ -59,3 +59,15 @@ watchEffect(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.message-alert {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 90%;
+  max-width: 600px;
+}
+</style>

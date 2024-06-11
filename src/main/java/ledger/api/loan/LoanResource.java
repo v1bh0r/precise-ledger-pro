@@ -41,7 +41,7 @@ public class LoanResource {
     @DELETE
     @Path("/{id}")
     @Transactional
-    public void deleteLoan(UUID id) {
+    public void deleteLoan(@PathParam("id") UUID id) {
         Optional<Loan> optional = Loan.findByIdOptional(id);
         optional.ifPresent(Loan::delete);
     }

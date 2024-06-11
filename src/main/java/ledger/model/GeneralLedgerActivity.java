@@ -57,6 +57,7 @@ public class GeneralLedgerActivity extends PanacheEntityBase {
     LocalDateTime transactionTime;
 
     @Builder.Default
+    @JsonDeserialize(using = MonetaryAmountDeserializer.class)
     private Double amount = 0.0;
 
     public MonetaryAmount getAmount() {

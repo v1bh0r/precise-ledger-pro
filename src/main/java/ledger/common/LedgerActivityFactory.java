@@ -27,6 +27,5 @@ public class LedgerActivityFactory {
             case "Reversal" -> new ReversalActivity(generalActivity, ledgerService);
             default -> throw new RuntimeException("Unknown activity type: " + generalActivity.getActivityType());
         };
-
     }
 }
