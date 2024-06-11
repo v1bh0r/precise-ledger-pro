@@ -4,10 +4,7 @@ import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import ledger.model.Balance;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
@@ -32,13 +29,18 @@ public class Loan extends PanacheEntityBase {
     String currencyCode = DEFAULT_CURRENCY_CODE;
     String externalId;
     @Builder.Default
+    @NonNull
     Double lastLedgerFreezePrincipalBalance = 0.0;
+    @NonNull
     @Builder.Default
     Double lastLedgerFreezeInterestBalance = 0.0;
+    @NonNull
     @Builder.Default
     Double lastLedgerFreezeFeeBalance = 0.0;
+    @NonNull
     @Builder.Default
     Double lastLedgerFreezeExcessBalance = 0.0;
+    @NonNull
     @Builder.Default
     LocalDateTime lastLedgerFrozenOn = DB_SAFE_LOCAL_DATETIME_MIN;
 
