@@ -1,0 +1,297 @@
+<template>
+  <div class="loan-lifecycle uk-container">
+    <!-- General Ledger Activity Form -->
+    <section class="general-ledger-activity uk-margin">
+      <h2>General Ledger Activity</h2>
+      <form @submit.prevent="postActivity" class="uk-form-stacked">
+        <table class="uk-table uk-table-divider">
+          <thead>
+            <tr>
+              <th>Activity ID</th>
+              <th>Common Name</th>
+              <th>Transaction Strategy</th>
+              <th>Principal</th>
+              <th>Interest</th>
+              <th>Fee</th>
+              <th>Direction</th>
+              <th>Spread</th>
+              <th>Effective At</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <input v-model="newActivity.activityId" class="uk-input" type="text" readonly />
+              </td>
+              <td>
+                <input v-model="newActivity.commonName" class="uk-input" type="text" required />
+              </td>
+              <td>
+                <select v-model="newActivity.transactionStrategy" class="uk-select">
+                  <option value="ComputationalSpread">ComputationalSpread</option>
+                  <option value="StaticSpread">StaticSpread</option>
+                </select>
+              </td>
+              <td>
+                <input
+                  v-model.number="newActivity.principal"
+                  @input="updateAmount"
+                  class="uk-input"
+                  type="number"
+                />
+              </td>
+              <td>
+                <input
+                  v-model.number="newActivity.interest"
+                  @input="updateAmount"
+                  class="uk-input"
+                  type="number"
+                />
+              </td>
+              <td>
+                <input
+                  v-model.number="newActivity.fee"
+                  @input="updateAmount"
+                  class="uk-input"
+                  type="number"
+                />
+              </td>
+              <td>
+                <select v-model="newActivity.direction" class="uk-select">
+                  <option value="CREDIT">CREDIT</option>
+                  <option value="DEBIT">DEBIT</option>
+                </select>
+              </td>
+              <td><input v-model="newActivity.spread" class="uk-input" type="text" /></td>
+              <td>
+                <input
+                  v-model="newActivity.effectiveAt"
+                  class="uk-input"
+                  type="datetime-local"
+                  readonly
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <button type="submit" class="uk-button uk-button-primary">Post Activity</button>
+      </form>
+    </section>
+
+    <!-- Time Control Section -->
+    <section class="time-control uk-margin">
+      <h2>Time Control</h2>
+      <div>
+        <label for="speed">Speed of Time:</label>
+        <input
+          v-model="timeSpeed"
+          class="uk-range"
+          type="range"
+          min="1"
+          max="10"
+          step="1"
+          id="speed"
+        />
+        <span>{{ timeSpeed }}x</span>
+      </div>
+      <div>
+        <span>Current Date: {{ currentDate }}</span>
+        <label for="currentDate">Current Date:</label>
+        <input
+          v-model="currentDateInput"
+          @change="updateCurrentDate"
+          class="uk-input"
+          type="datetime-local"
+          id="currentDate"
+        />
+      </div>
+      <button @click="startSimulation" class="uk-button uk-button-default">Start</button>
+      <button @click="pauseSimulation" class="uk-button uk-button-default">Pause</button>
+    </section>
+
+    <!-- Activity Log Section -->
+    <section class="activity-log uk-margin">
+      <h2>Activity Log</h2>
+      <ul class="uk-list uk-list-divider">
+        <li v-for="activity in activities" :key="activity.id">
+          {{ activity.activityType }}: {{ activity.commonName }} ({{ activity.effectiveAt }})
+        </li>
+      </ul>
+    </section>
+  </div>
+</template>
+
+<script>
+import axios from 'axios'
+
+export default {
+  data() {
+    return {
+      newActivity: {
+        activityId: this.generateId(),
+        commonName: '',
+        activityType: 'Transaction', // Hardcoded value
+        transactionStrategy: 'ComputationalSpread', // Default value
+        principal: 0,
+        interest: 0,
+        fee: 0,
+        excess: 0,
+        direction: 'DEBIT', // Default value
+        spread: 'FIP', // Default text
+        reversalActivityType: '',
+        reversalActivityId: '',
+        effectiveAt: new Date().toISOString().slice(0, 16),
+        transactionTime: new Date().toISOString().slice(0, 16),
+        amount: 0
+      },
+      activities: [],
+      timeSpeed: 1,
+      currentDate: new Date(),
+      simulationInterval: null,
+      currentDateInput: new Date().toISOString().slice(0, 16)
+    }
+  },
+  watch: {
+    'newActivity.principal': 'updateAmount',
+    'newActivity.interest': 'updateAmount',
+    'newActivity.fee': 'updateAmount',
+    'newActivity.excess': 'updateAmount'
+  },
+  methods: {
+    async postActivity() {
+      const loanId = this.$route.params.id
+      try {
+        const response = await axios.post(
+          `/api/v1/loans/${loanId}/ledger-activities`,
+          this.newActivity
+        )
+        this.newActivity.id = response.data.id
+        this.newActivity.transactionTime = this.currentDate.toISOString().slice(0, 16)
+        this.activities.push({ ...this.newActivity })
+        this.resetForm()
+      } catch (error) {
+        console.error('Error posting activity:', error)
+      }
+    },
+    generateId() {
+      return '_' + Math.random().toString(36).substr(2, 9)
+    },
+    resetForm() {
+      this.newActivity = {
+        activityId: this.generateId(),
+        commonName: '',
+        activityType: 'Transaction', // Hardcoded value
+        transactionStrategy: 'ComputationalSpread', // Default value
+        principal: 0,
+        interest: 0,
+        fee: 0,
+        excess: 0,
+        direction: 'DEBIT', // Default value
+        spread: 'FIP', // Default text
+        reversalActivityType: '',
+        reversalActivityId: '',
+        effectiveAt: new Date().toISOString().slice(0, 16),
+        transactionTime: new Date().toISOString().slice(0, 16),
+        amount: 0
+      }
+    },
+    updateAmount() {
+      this.newActivity.amount =
+        this.newActivity.principal +
+        this.newActivity.interest +
+        this.newActivity.fee +
+        this.newActivity.excess
+    },
+    startSimulation() {
+      let previousDate = new Date(this.currentDate)
+      if (this.simulationInterval) return
+      this.simulationInterval = setInterval(() => {
+        this.currentDate = new Date(this.currentDate.getTime() + 3600000 * this.timeSpeed) // 1 hour per second at 1x speed
+        this.newActivity.transactionTime = this.newActivity.effectiveAt = this.currentDate
+          .toISOString()
+          .slice(0, 16)
+
+        // Check if it's the start of a new day
+        if (previousDate.getDate() !== this.currentDate.getDate()) {
+          this.postInterestAccrual()
+          previousDate = this.currentDate
+        }
+      }, 1000)
+    },
+    pauseSimulation() {
+      clearInterval(this.simulationInterval)
+      this.simulationInterval = null
+    },
+    async created() {
+      const loanId = this.$route.params.id
+      try {
+        const response = await axios.get(`/api/v1/loans/${loanId}/ledger-activities`)
+        const ledgerEntries = response.data
+        if (ledgerEntries.length > 0) {
+          const lastEntry = ledgerEntries[ledgerEntries.length - 1]
+          this.currentDate = new Date(new Date(lastEntry.createdAt).getTime() + 1000)
+        }
+      } catch (error) {
+        console.error('Error fetching ledger entries:', error)
+      }
+    },
+    async postInterestAccrual() {
+      const loanId = this.$route.params.id
+      try {
+        const startOfDay = new Date(this.currentDate)
+        startOfDay.setHours(0, 0, 0, 0)
+        const interestAccrual = {
+          activityId: this.generateId(),
+          commonName: 'Interest Accrual',
+          activityType: 'StartOfDay',
+          transactionStrategy: this.newActivity.transactionStrategy,
+          principal: 0,
+          interest: this.newActivity.interest, // Example interest accrual
+          fee: 0,
+          excess: 0,
+          direction: 'CREDIT', // Interest accrual is typically a credit
+          spread: this.newActivity.spread,
+          reversalActivityType: '',
+          reversalActivityId: '',
+          effectiveAt: startOfDay.toISOString().slice(0, 16),
+          transactionTime: this.currentDate.toISOString().slice(0, 16),
+          amount: this.newActivity.interest
+        }
+        const response = await axios.post(
+          `/api/v1/loans/${loanId}/ledger-activities`,
+          interestAccrual
+        )
+        interestAccrual.id = response.data.id
+        this.activities.push(interestAccrual)
+      } catch (error) {
+        console.error('Error posting interest accrual:', error)
+      }
+    },
+    updateCurrentDate() {
+      this.currentDate = new Date(this.currentDateInput)
+    }
+  }
+}
+</script>
+
+<style>
+.loan-lifecycle {
+  font-family: Arial, sans-serif;
+}
+.uk-table-divider > tbody > tr > td {
+  vertical-align: middle;
+}
+.time-control input[type='range'] {
+  width: 200px;
+}
+.activity-log ul {
+  list-style-type: none;
+  padding: 0;
+}
+.activity-log li {
+  background: #f0f0f0;
+  margin-bottom: 5px;
+  padding: 10px;
+  border-radius: 4px;
+}
+</style>
