@@ -118,16 +118,16 @@ export default {
   data() {
     return {
       form: {
-        daysInYear: '',
-        currencyCode: '',
+        daysInYear: '365',
+        currencyCode: 'USD',
         externalId: '',
-        lastLedgerFreezePrincipalBalance: '',
-        lastLedgerFreezeInterestBalance: '',
-        lastLedgerFreezeFeeBalance: '',
-        lastLedgerFreezeExcessBalance: '',
-        lastLedgerFrozenOn: ''
+        lastLedgerFreezePrincipalBalance: 0.0,
+        lastLedgerFreezeInterestBalance: 0.0,
+        lastLedgerFreezeFeeBalance: 0.0,
+        lastLedgerFreezeExcessBalance: 0.0,
+        lastLedgerFrozenOn: new Date()
       },
-      interestRate: ''
+      interestRate: '10.0'
     }
   },
   methods: {

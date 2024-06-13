@@ -9,6 +9,7 @@ import ledger.model.GeneralLedgerActivity;
 import ledger.service.LedgerService;
 import ledger.service.LoanService;
 
+import java.util.List;
 import java.util.UUID;
 
 import static ledger.util.DateTimeUtil.DB_SAFE_LOCAL_DATETIME_MIN;
@@ -37,5 +38,10 @@ public class LedgerActivityResource {
                 temporalContext);
         ledger.getEntries().forEach(ledgerEntry -> ledgerEntry.persist());
         return generalLedgerActivity;
+    }
+
+    @GET
+    public List<GeneralLedgerActivity> getLedgerActivity(@PathParam("loanId") UUID loanId) {
+        return GeneralLedgerActivity.find("loanId = ?1", loanId.toString()).list();
     }
 }

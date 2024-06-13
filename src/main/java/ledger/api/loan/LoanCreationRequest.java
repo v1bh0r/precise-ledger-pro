@@ -1,5 +1,7 @@
 package ledger.api.loan;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,7 +12,9 @@ import static ledger.config.AppConfig.DEFAULT_CURRENCY_CODE;
 import static ledger.config.AppConfig.DEFAULT_DAYS_IN_YEAR;
 import static ledger.util.DateTimeUtil.DB_SAFE_LOCAL_DATETIME_MIN;
 
+@Builder
 @Getter
+@AllArgsConstructor
 public class LoanCreationRequest {
     @Setter
     private Integer daysInYear = DEFAULT_DAYS_IN_YEAR;

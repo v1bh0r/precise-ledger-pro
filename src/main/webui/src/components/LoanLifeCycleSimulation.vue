@@ -1,5 +1,5 @@
 <template>
-  <div class="loan-lifecycle uk-container">
+  <div class="loan-lifecycle uk-container uk-margin uk-width-1-1">
     <!-- General Ledger Activity Form -->
     <section class="general-ledger-activity uk-margin">
       <h2>General Ledger Activity</h2>
@@ -16,6 +16,7 @@
               <th>Direction</th>
               <th>Spread</th>
               <th>Effective At</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -64,17 +65,61 @@
               </td>
               <td><input v-model="newActivity.spread" class="uk-input" type="text" /></td>
               <td>
-                <input
-                  v-model="newActivity.effectiveAt"
-                  class="uk-input"
-                  type="datetime-local"
-                  readonly
-                />
+                <input v-model="newActivity.effectiveAt" class="uk-input" type="datetime-local" />
+              </td>
+              <td>
+                <button type="submit" class="uk-button uk-button-primary">Post Activity</button>
               </td>
             </tr>
           </tbody>
         </table>
-        <button type="submit" class="uk-button uk-button-primary">Post Activity</button>
+      </form>
+
+      <form @submit.prevent="submitReversal" class="uk-form-stacked">
+        <table class="uk-table uk-table-divider">
+          <thead>
+            <tr>
+              <th>Activity Type</th>
+              <th>Activity ID</th>
+              <th>Common Name</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <input
+                  id="activityType"
+                  v-model="reversal.activityType"
+                  class="uk-input"
+                  type="text"
+                  required
+                />
+              </td>
+              <td>
+                <input
+                  id="activityId"
+                  v-model="reversal.activityId"
+                  class="uk-input"
+                  type="text"
+                  required
+                />
+              </td>
+              <td>
+                <input
+                  id="commonName"
+                  v-model="reversal.commonName"
+                  class="uk-input"
+                  type="text"
+                  required
+                />
+              </td>
+              <td>
+                <button type="submit" class="uk-button uk-button-primary">Submit Reversal</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </form>
     </section>
 
@@ -108,16 +153,6 @@
       <button @click="startSimulation" class="uk-button uk-button-default">Start</button>
       <button @click="pauseSimulation" class="uk-button uk-button-default">Pause</button>
     </section>
-
-    <!-- Activity Log Section -->
-    <section class="activity-log uk-margin">
-      <h2>Activity Log</h2>
-      <ul class="uk-list uk-list-divider">
-        <li v-for="activity in activities" :key="activity.id">
-          {{ activity.activityType }}: {{ activity.commonName }} ({{ activity.effectiveAt }})
-        </li>
-      </ul>
-    </section>
   </div>
 </template>
 
@@ -127,6 +162,11 @@ import axios from 'axios'
 export default {
   data() {
     return {
+      reversal: {
+        activityType: '',
+        activityId: '',
+        commonName: ''
+      },
       newActivity: {
         activityId: this.generateId(),
         commonName: '',
@@ -155,19 +195,23 @@ export default {
     'newActivity.principal': 'updateAmount',
     'newActivity.interest': 'updateAmount',
     'newActivity.fee': 'updateAmount',
-    'newActivity.excess': 'updateAmount'
+    'newActivity.excess': 'updateAmount',
+    'reversal.activityId': 'updateReversalCommonName',
+    'reversal.activityType': 'updateReversalCommonName'
+  },
+  beforeUnmount() {
+    clearInterval(this.simulationInterval)
   },
   methods: {
     async postActivity() {
       const loanId = this.$route.params.id
       try {
+        this.newActivity.transactionTime = this.currentDate.toISOString().slice(0, 16)
         const response = await axios.post(
           `/api/v1/loans/${loanId}/ledger-activities`,
           this.newActivity
         )
         this.newActivity.id = response.data.id
-        this.newActivity.transactionTime = this.currentDate.toISOString().slice(0, 16)
-        this.activities.push({ ...this.newActivity })
         this.resetForm()
       } catch (error) {
         console.error('Error posting activity:', error)
@@ -190,8 +234,8 @@ export default {
         spread: 'FIP', // Default text
         reversalActivityType: '',
         reversalActivityId: '',
-        effectiveAt: new Date().toISOString().slice(0, 16),
-        transactionTime: new Date().toISOString().slice(0, 16),
+        effectiveAt: this.currentDate.toISOString().slice(0, 16),
+        transactionTime: this.currentDate.toISOString().slice(0, 16),
         amount: 0
       }
     },
@@ -201,6 +245,9 @@ export default {
         this.newActivity.interest +
         this.newActivity.fee +
         this.newActivity.excess
+    },
+    updateReversalCommonName() {
+      this.reversal.commonName = `Reversal - ${this.reversal.activityType} - ${this.reversal.activityId}`
     },
     startSimulation() {
       let previousDate = new Date(this.currentDate)
@@ -241,7 +288,7 @@ export default {
         const startOfDay = new Date(this.currentDate)
         startOfDay.setHours(0, 0, 0, 0)
         const interestAccrual = {
-          activityId: this.generateId(),
+          activityId: 'SOD-' + startOfDay.toISOString().split('T')[0],
           commonName: 'Interest Accrual',
           activityType: 'StartOfDay',
           transactionStrategy: this.newActivity.transactionStrategy,
@@ -262,13 +309,29 @@ export default {
           interestAccrual
         )
         interestAccrual.id = response.data.id
-        this.activities.push(interestAccrual)
       } catch (error) {
         console.error('Error posting interest accrual:', error)
       }
     },
     updateCurrentDate() {
       this.currentDate = new Date(this.currentDateInput)
+    },
+    async submitReversal() {
+      try {
+        const reversalData = {
+          activityId: this.reversal.activityId,
+          commonName: this.reversal.commonName,
+          activityType: 'Reversal',
+          reversalActivityId: this.reversal.activityId,
+          reversalActivityType: this.reversal.activityType,
+          effectiveAt: this.currentDate,
+          transactionTime: this.currentDate
+        }
+        const loanId = this.$route.params.id // get the loan ID from the route params
+        await axios.post(`/api/v1/loans/${loanId}/ledger-activities`, reversalData)
+      } catch (error) {
+        console.error(error)
+      }
     }
   }
 }

@@ -11,6 +11,7 @@
         "format": "prettier --write src/"
     },
     "dependencies": {
+        "oboe": "^2.1.5",
         "uikit": "^3.21.5",
         "vue": "^3.4.21",
         "vue-router": "^4.3.0",

@@ -48,8 +48,11 @@ public class StartOfDay extends TemporalActivity {
         temporalActivityCommands.forEach(commandName -> {
             var nextLedgerEntryId = generateId();
             var command = TemporalActivityCommandFactory.getCommand(commandName);
-            ledger.addEntry(command.execute(nextLedgerEntryId, ledger.getLoanId(), balance,
-                    getActivityType(), getActivityId(), sodDateTime, temporalActivityContext));
+            var entry = command.execute(nextLedgerEntryId, ledger.getLoanId(), balance,
+                    getActivityType(), getActivityId(), sodDateTime, temporalActivityContext);
+            if (!entry.getAmount().isZero()) {
+                ledger.addEntry(entry);
+            }
         });
     }
 }
