@@ -12,7 +12,7 @@ import ledger.util.ObjectToCsvUtil;
 import java.util.List;
 import java.util.UUID;
 
-@Path("/api/v1/loans/{loanId}")
+@Path("/api/v1/loans")
 public class LedgerResource {
     @Inject
     LedgerService ledgerService;
@@ -20,14 +20,14 @@ public class LedgerResource {
     ObjectToCsvUtil<LedgerEntry> objectToCsvUtil = new ObjectToCsvUtil<>();
 
     @GET
-    @Path("/ledger")
+    @Path("/{loanId}/ledger")
     public List<LedgerEntry> getLedger(@PathParam("loanId") UUID loanId) {
         var ledger = ledgerService.getLedger(loanId);
         return ledger.getEntries();
     }
 
     @GET
-    @Path("/ledger.csv")
+    @Path("/{loanId}/ledger.csv")
     public Response getLedgerCsv(@PathParam("loanId") UUID loanId) throws IllegalAccessException {
         var ledger = ledgerService.getLedger(loanId);
         return Response.ok(objectToCsvUtil.generateCSV(ledger.getEntries())).type("text/csv").build();
