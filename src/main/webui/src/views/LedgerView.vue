@@ -75,7 +75,7 @@
 
 <script>
 import LoanLifecycle from '../components/LoanLifeCycleSimulation.vue'
-import oboe from 'oboe'
+import axios from 'axios'
 
 export default {
   components: {
@@ -97,30 +97,12 @@ export default {
   },
   methods: {
     async refreshLedger() {
-      const loanId = this.$route.params.id // get the loan ID from the route params
-      this.ledgerEntries = []
-      this.ledgerActivities = []
-      oboe(`/api/v1/loans/${loanId}/ledger`)
-        .node('!.*', (entry) => {
-          this.ledgerEntries.push(entry)
-        })
-        .done(() => {
-          console.log('All ledger entries loaded')
-        })
-        .fail((err) => {
-          console.error('Error fetching ledger entries:', err)
-        })
+      const loanId = this.$route.params.id
+      const response = await axios.get(`/api/v1/loans/${loanId}/ledger`)
+      this.ledgerEntries = response.data
 
-      oboe(`/api/v1/loans/${loanId}/ledger-activities`)
-        .node('!.*', (activity) => {
-          this.ledgerActivities.push(activity)
-        })
-        .done(() => {
-          console.log('All activities loaded')
-        })
-        .fail((err) => {
-          console.error('Error fetching activities:', err)
-        })
+      const response2 = await axios.get(`/api/v1/loans/${loanId}/ledger-activities`)
+      this.ledgerActivities = response2.data
     }
   }
 }
