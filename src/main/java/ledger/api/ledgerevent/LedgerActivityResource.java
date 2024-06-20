@@ -42,6 +42,6 @@ public class LedgerActivityResource {
 
     @GET
     public List<GeneralLedgerActivity> getLedgerActivity(@PathParam("loanId") UUID loanId) {
-        return GeneralLedgerActivity.find("loanId = ?1", loanId.toString()).list();
+        return GeneralLedgerActivity.list("loanId", loanId.toString());
     }
 }
