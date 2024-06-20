@@ -58,6 +58,11 @@
               <th>Activity Type</th>
               <th>Activity ID</th>
               <th>Common Name</th>
+              <th>Amount</th>
+              <th>Transaction Time</th>
+              <th>Transaction Strategy</th>
+              <th>Direction</th>
+              <th>Spread</th>
             </tr>
           </thead>
           <tbody>
@@ -65,6 +70,11 @@
               <td>{{ activity.activityType }}</td>
               <td>{{ activity.activityId }}</td>
               <td>{{ activity.commonName }}</td>
+              <td>{{ activity.amount.number }}</td>
+              <td>{{ activity.transactionTime }}</td>
+              <td>{{ activity.transactionStrategy }}</td>
+              <td>{{ activity.direction }}</td>
+              <td>{{ activity.spread }}</td>
             </tr>
           </tbody>
         </table>

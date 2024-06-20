@@ -9,10 +9,7 @@
             <tr>
               <th>Activity ID</th>
               <th>Common Name</th>
-              <th>Transaction Strategy</th>
-              <th>Principal</th>
-              <th>Interest</th>
-              <th>Fee</th>
+              <th>Amount</th>
               <th>Direction</th>
               <th>Spread</th>
               <th>Effective At</th>
@@ -28,34 +25,7 @@
                 <input v-model="newActivity.commonName" class="uk-input" type="text" required />
               </td>
               <td>
-                <select v-model="newActivity.transactionStrategy" class="uk-select">
-                  <option value="ComputationalSpread">ComputationalSpread</option>
-                  <option value="StaticSpread">StaticSpread</option>
-                </select>
-              </td>
-              <td>
-                <input
-                  v-model.number="newActivity.principal"
-                  @input="updateAmount"
-                  class="uk-input"
-                  type="number"
-                />
-              </td>
-              <td>
-                <input
-                  v-model.number="newActivity.interest"
-                  @input="updateAmount"
-                  class="uk-input"
-                  type="number"
-                />
-              </td>
-              <td>
-                <input
-                  v-model.number="newActivity.fee"
-                  @input="updateAmount"
-                  class="uk-input"
-                  type="number"
-                />
+                <input v-model.number="newActivity.amount" class="uk-input" type="number" />
               </td>
               <td>
                 <select v-model="newActivity.direction" class="uk-select">
@@ -192,10 +162,6 @@ export default {
     }
   },
   watch: {
-    'newActivity.principal': 'updateAmount',
-    'newActivity.interest': 'updateAmount',
-    'newActivity.fee': 'updateAmount',
-    'newActivity.excess': 'updateAmount',
     'reversal.activityId': 'updateReversalCommonName',
     'reversal.activityType': 'updateReversalCommonName'
   },
@@ -238,13 +204,6 @@ export default {
         transactionTime: this.currentDate.toISOString().slice(0, 16),
         amount: 0
       }
-    },
-    updateAmount() {
-      this.newActivity.amount =
-        this.newActivity.principal +
-        this.newActivity.interest +
-        this.newActivity.fee +
-        this.newActivity.excess
     },
     updateReversalCommonName() {
       this.reversal.commonName = `Reversal - ${this.reversal.activityType} - ${this.reversal.activityId}`
