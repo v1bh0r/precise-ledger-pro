@@ -140,7 +140,7 @@ export default {
         // After loan creation, create interest rate
         const interestRateResponse = await axios.post('/api/v1/interest-rates', {
           loanId: response.data.id,
-          rate: this.interestRate,
+          rate: this.interestRate / 100,
           effectiveAt: new Date().toISOString() // assuming the interest rate is effective immediately
         })
         console.log(interestRateResponse.data)
