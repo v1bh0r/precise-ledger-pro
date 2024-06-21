@@ -120,8 +120,9 @@
           id="currentDate"
         />
       </div>
-      <button @click="startSimulation" class="uk-button uk-button-default">Start</button>
-      <button @click="pauseSimulation" class="uk-button uk-button-default">Pause</button>
+      <button @click="toggleSimulation" class="uk-button uk-button-default">
+        {{ this.isSimulationRunning ? 'Pause' : 'Start' }}
+      </button>
     </section>
   </div>
 </template>
@@ -132,6 +133,7 @@ import axios from 'axios'
 export default {
   data() {
     return {
+      isSimulationRunning: false,
       reversal: {
         activityType: '',
         activityId: '',
@@ -208,7 +210,15 @@ export default {
     updateReversalCommonName() {
       this.reversal.commonName = `Reversal - ${this.reversal.activityType} - ${this.reversal.activityId}`
     },
+    toggleSimulation() {
+      if (this.isSimulationRunning) {
+        this.pauseSimulation()
+      } else {
+        this.startSimulation()
+      }
+    },
     startSimulation() {
+      this.isSimulationRunning = true
       let previousDate = new Date(this.currentDate)
       if (this.simulationInterval) return
       this.simulationInterval = setInterval(() => {
@@ -225,6 +235,7 @@ export default {
       }, 1000)
     },
     pauseSimulation() {
+      this.isSimulationRunning = false
       clearInterval(this.simulationInterval)
       this.simulationInterval = null
     },
