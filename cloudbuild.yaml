@@ -1,15 +1,18 @@
 steps:
-  - name: 'maven'
-    entrypoint: 'mvn'
-    args: [
-      'clean', 'package',
-      '-Dquarkus.container-image.build=true',
-      '-Dquarkus.container-image.push=true',
-      '-Dquarkus.container-image.registry=asia-south2-docker.pkg.dev',
-      '-Dquarkus.container-image.group=${PROJECT_ID}',
-      '-Dquarkus.container-image.name=cloud-run-source-deploy/precise-ledger-pro',
-      '-Dquarkus.container-image.tag=latest'
-    ]
+  - name: 'maven:3.9.7-eclipse-temurin-21'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+        apt-get install -y nodejs
+        mvn clean package \
+          -Dquarkus.container-image.build=true \
+          -Dquarkus.container-image.push=true \
+          -Dquarkus.container-image.registry=asia-south2-docker.pkg.dev \
+          -Dquarkus.container-image.group=${PROJECT_ID} \
+          -Dquarkus.container-image.name=cloud-run-source-deploy/precise-ledger-pro \
+          -Dquarkus.container-image.tag=latest
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
