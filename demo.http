@@ -4,10 +4,14 @@ Content-Type: application/json
 Accept: application/json
 
 {
-    "daysInYear": 365,
+    "daysInYear": "365",
     "currencyCode": "USD",
-    "externalId": "LAI-100001",
-    "lastLedgerFrozenOn": "2024-03-01T00:00:00"
+    "externalId": "",
+    "lastLedgerFreezePrincipalBalance": 0,
+    "lastLedgerFreezeInterestBalance": 0,
+    "lastLedgerFreezeFeeBalance": 0,
+    "lastLedgerFreezeExcessBalance": 0,
+    "lastLedgerFrozenOn": "2024-06-26T10:25:42.815Z"
 }
 
 
@@ -99,7 +103,7 @@ Content-Type: text/csv
 <> 2024-05-14T175944.500.json
 
 ###
-GET {{baseUrl}}/api/v1/loans/{{createdLoanId}}/ledger
+GET {{baseUrl}}/api/v1/loans/{{createdLoanId}}/ledger.csv
 Accept: text/csv
 
 > {%
