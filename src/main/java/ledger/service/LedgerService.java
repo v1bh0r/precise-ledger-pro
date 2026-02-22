@@ -252,8 +252,8 @@ public class LedgerService {
     public Ledger getLedger(UUID loanId, LocalDateTime since) {
         Loan loan = Loan.findById(loanId);
 
-        List<LedgerEntry> ledgerEntries = LedgerEntry.find("loanId = ?1 and createdAt > ?2", loanId.toString(),
-                        since)
+        List<LedgerEntry> ledgerEntries = LedgerEntry.find("loanId = ?1 and createdAt > ?2 order by createdAt asc",
+                        loanId.toString(), since)
                 .list();
         return new Ledger(loanId.toString(), loan.getStartingLedgerBalance(), ledgerEntries, loan.getCurrencyCode());
     }
@@ -261,7 +261,8 @@ public class LedgerService {
     public Ledger getLedger(UUID loanId) {
         Loan loan = Loan.findById(loanId);
 
-        List<LedgerEntry> ledgerEntries = LedgerEntry.find("loanId = ?1", loanId.toString())
+        List<LedgerEntry> ledgerEntries = LedgerEntry.find("loanId = ?1 order by createdAt asc",
+                        loanId.toString())
                 .list();
         return new Ledger(loanId.toString(), loan.getStartingLedgerBalance(), ledgerEntries, loan.getCurrencyCode());
     }
