@@ -8,7 +8,8 @@
   <version>1.0-SNAPSHOT</version>
   <properties>
     <compiler-plugin.version>3.13.0</compiler-plugin.version>
-    <maven.compiler.release>21</maven.compiler.release>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
     <org.javamoney.moneta.version>1.4.4</org.javamoney.moneta.version>
     <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
     <org.projectlombok.version>1.18.32</org.projectlombok.version>
@@ -166,6 +167,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${surefire-plugin.version}</version>
         <configuration>
+          <argLine>-Dnet.bytebuddy.experimental=true</argLine>
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
           </systemPropertyVariables>
