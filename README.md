@@ -8,7 +8,9 @@ A static marketing page and interactive ledger demo are published via **GitHub P
 
 **[https://v1bh0r.github.io/precise-ledger-pro/](https://v1bh0r.github.io/precise-ledger-pro/)**
 
-To enable GitHub Pages: **Settings → Pages → Source: Deploy from a branch → Branch: `main`, folder: `/docs` → Save**.
+Deployment uses **GitHub Actions** (see `.github/workflows/pages.yml`) to publish `docs/` directly and bypass Jekyll processing.
+
+To enable it: **Settings → Pages → Source: GitHub Actions**.
 
 ## Development
 
