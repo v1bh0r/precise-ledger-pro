@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Precise Ledger Pro — The Java Ledger SDK That Is Correct by Construction</title>
+  <meta name="description" content="A perpetual-licensed Java SDK that guarantees loan ledger correctness through reversals, backdated entries, and out-of-order events. Self-hosted, source code included." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          colors: {
+            navy:  { 950: '#060c18', 900: '#0a0f1e', 800: '#0d1526', 700: '#111d35', 600: '#162240' },
+            brand: { 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7' },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #0a0f1e; color: #e2e8f0; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(56,189,248,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56,189,248,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .card {
+      background: #0d1526; border: 1px solid rgba(56,189,248,0.1);
+      border-radius: 12px; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .card:hover { border-color: rgba(56,189,248,0.28); box-shadow: 0 0 24px rgba(56,189,248,0.06); }
+    .code-block {
+      background: #060c18; border: 1px solid rgba(56,189,248,0.12);
+      border-radius: 8px; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem; line-height: 1.75;
+    }
+    .badge { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.04em; }
+    .btn-primary {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; font-weight: 600;
+      padding: 13px 30px; border-radius: 8px; display: inline-block;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-outline {
+      border: 1px solid rgba(56,189,248,0.4); color: #38bdf8; font-weight: 500;
+      padding: 12px 30px; border-radius: 8px; display: inline-block;
+      transition: all 0.15s;
+    }
+    .btn-outline:hover { border-color: #38bdf8; background: rgba(56,189,248,0.06); }
+    .pricing-card {
+      background: #0d1526; border: 1px solid rgba(56,189,248,0.12);
+      border-radius: 16px; padding: 36px; transition: border-color 0.2s;
+    }
+    .pricing-card.featured { border-color: rgba(56,189,248,0.45); box-shadow: 0 0 40px rgba(56,189,248,0.08); }
+    .check::before { content: "✓"; color: #4ade80; margin-right: 10px; font-weight: 700; }
+    .cross::before { content: "✗"; color: #f87171; margin-right: 10px; font-weight: 700; }
+    .section-label { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: #38bdf8; }
+    .flow-step {
+      background: #0d1526; border: 1px solid rgba(56,189,248,0.15);
+      border-radius: 12px; padding: 24px; text-align: center; position: relative;
+    }
+    .flow-step .step-num {
+      width: 32px; height: 32px; border-radius: 50%; display: inline-flex;
+      align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700;
+      background: rgba(56,189,248,0.15); color: #38bdf8; margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body class="antialiased">
+
+<!-- NAV -->
+<nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5" style="background:rgba(10,15,30,0.92);backdrop-filter:blur(12px);">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <a href="#" class="flex items-center gap-2">
+      <span class="mono text-brand-400 font-bold text-lg tracking-tight">PreciseLedger<span class="text-white">Pro</span></span>
+      <span class="badge bg-brand-500/20 text-brand-400 border border-brand-500/25">SDK</span>
+    </a>
+    <div class="hidden md:flex items-center gap-8 text-sm">
+      <a href="#capabilities" class="text-slate-400 hover:text-brand-400 transition-colors">Capabilities</a>
+      <a href="#algorithm" class="text-slate-400 hover:text-brand-400 transition-colors">How It Works</a>
+      <a href="#integration" class="text-slate-400 hover:text-brand-400 transition-colors">Integration</a>
+      <a href="#pricing" class="text-slate-400 hover:text-brand-400 transition-colors">Pricing</a>
+      <a href="demo.html" class="btn-outline text-sm !py-2 !px-4">Live Demo</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================================ -->
+<!-- HERO -->
+<!-- ============================================================ -->
+<section class="grid-bg relative pt-32 pb-24 px-6 text-center overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-navy-900/90 pointer-events-none"></div>
+  <div class="relative max-w-4xl mx-auto">
+    <div class="inline-flex items-center gap-2 mono text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 px-4 py-2 rounded-full mb-8">
+      <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block"></span>
+      Perpetual License &middot; Self-Hosted &middot; Source Code Included
+    </div>
+    <h1 class="text-5xl md:text-6xl font-extrabold leading-[1.1] mb-6 tracking-tight">
+      The Java Ledger SDK<br/>
+      <span class="gradient-text">Correct by Construction</span>
+    </h1>
+    <p class="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-4">
+      Build loan ledgers that stay consistent through payment reversals, backdated entries,
+      and out-of-order events &mdash; guaranteed by the engine, not by careful coding.
+    </p>
+    <p class="text-sm text-slate-500 mb-10 mono">
+      Java 21 &middot; Quarkus / Spring compatible &middot; JavaMoney 256-bit precision &middot; 53 tested invariants
+    </p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="demo.html" class="btn-primary">View Live Demo</a>
+      <a href="#pricing" class="btn-outline">Get a License</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- THE PROBLEM -->
+<!-- ============================================================ -->
+<section class="max-w-6xl mx-auto px-6 py-24">
+  <p class="section-label mb-4">// the_problem</p>
+  <h2 class="text-3xl md:text-4xl font-bold mb-14">Your ledger isn't wrong <em>today</em>.<br/>It's wrong <span class="gradient-text">after the reversal</span>.</h2>
+  <div class="grid md:grid-cols-2 gap-8">
+    <!-- Naive -->
+    <div class="card p-8">
+      <h3 class="mono text-red-400 text-sm font-semibold mb-5 flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/40 inline-block"></span>
+        Typical In-House Ledger
+      </h3>
+      <ul class="space-y-3 text-slate-400 text-[0.92rem]">
+        <li class="cross">Silent balance corruption on late-arriving payments</li>
+        <li class="cross">Hand-coded reversal logic with edge-case gaps</li>
+        <li class="cross">Backdated entries break running balances downstream</li>
+        <li class="cross">No idempotency &mdash; duplicate events corrupt state</li>
+        <li class="cross">Interest recalculations fall out of sync after corrections</li>
+        <li class="cross">Months of engineering to patch each new scenario</li>
+      </ul>
+    </div>
+    <!-- PLP -->
+    <div class="card p-8 border-brand-500/25">
+      <h3 class="mono text-green-400 text-sm font-semibold mb-5 flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/40 inline-block"></span>
+        Precise Ledger Pro
+      </h3>
+      <ul class="space-y-3 text-slate-300 text-[0.92rem]">
+        <li class="check">Automatic rollback &amp; replay on out-of-order events</li>
+        <li class="check">Reversal engine emits signed compensation entries</li>
+        <li class="check">Retroactive reconciliation synchs every downstream balance</li>
+        <li class="check">Composite idempotency keys prevent double-application</li>
+        <li class="check">Interest re-accrual built into the replay cycle</li>
+        <li class="check">One SDK &mdash; correct from day one, auditable forever</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- CAPABILITIES -->
+<!-- ============================================================ -->
+<section id="capabilities" class="max-w-6xl mx-auto px-6 py-24">
+  <p class="section-label mb-4">// capabilities</p>
+  <h2 class="text-3xl md:text-4xl font-bold mb-14">Six pillars of ledger integrity</h2>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+    <div class="card p-7">
+      <div class="text-2xl mb-3">&#9194;</div>
+      <h3 class="font-semibold text-lg mb-2">Retroactive Rollback + Replay</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">Backdated activities automatically trigger ledger rollback to the effective date, deterministic re-application of all subsequent activities, and delta-based synchronisation back into the primary ledger.</p>
+    </div>
+
+    <div class="card p-7">
+      <div class="text-2xl mb-3">&#8634;</div>
+      <h3 class="font-semibold text-lg mb-2">Reversal Compensation</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">Every reversal emits a signed compensation entry that mathematically negates the original impact, then rolls back and replays all downstream activities so running balances stay consistent.</p>
+    </div>
+
+    <div class="card p-7">
+      <div class="text-2xl mb-3">&#9878;</div>
+      <h3 class="font-semibold text-lg mb-2">Double-Entry Integrity</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">Every <code class="mono text-brand-400">LedgerEntry</code> carries both the component deltas (&Delta;principal, &Delta;interest, &Delta;fee, &Delta;excess) and the running balance &mdash; always consistent, always auditable.</p>
+    </div>
+
+    <div class="card p-7">
+      <div class="text-2xl mb-3">&#128176;</div>
+      <h3 class="font-semibold text-lg mb-2">JavaMoney Precision</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">Built on Moneta with a 256-bit <code class="mono text-brand-400">HALF_EVEN</code> MathContext. No IEEE-754 floating point drift &mdash; every cent is accounted for across millions of entries.</p>
+    </div>
+
+    <div class="card p-7">
+      <div class="text-2xl mb-3">&#128274;</div>
+      <h3 class="font-semibold text-lg mb-2">Idempotent Application</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">Composite idempotency keys on every entry prevent double-application on retry storms or duplicate event delivery &mdash; critical for event-sourced architectures.</p>
+    </div>
+
+    <div class="card p-7">
+      <div class="text-2xl mb-3">&#128296;</div>
+      <h3 class="font-semibold text-lg mb-2">Pluggable Spread Strategies</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">Ship with <code class="mono text-brand-400">ComputationalSpread</code> (interest-first waterfall) and <code class="mono text-brand-400">StaticAllocation</code>. Implement <code class="mono text-brand-400">TransactionSpreadStrategy</code> for any custom allocation rule.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- HOW IT WORKS (flow) -->
+<!-- ============================================================ -->
+<section id="algorithm" class="max-w-6xl mx-auto px-6 py-24">
+  <p class="section-label mb-4">// how_it_works</p>
+  <h2 class="text-3xl md:text-4xl font-bold mb-14">Three-phase deterministic engine</h2>
+
+  <div class="grid md:grid-cols-5 gap-4 items-center mb-20">
+    <div class="flow-step md:col-span-1">
+      <div class="step-num">1</div>
+      <h4 class="font-semibold mb-1 text-sm">Submit Activity</h4>
+      <p class="text-slate-400 text-xs">Transaction, SOD accrual, or reversal submitted via API</p>
+    </div>
+    <div class="hidden md:flex items-center justify-center text-brand-400/40 text-2xl">&rarr;</div>
+    <div class="flow-step md:col-span-1">
+      <div class="step-num">2</div>
+      <h4 class="font-semibold mb-1 text-sm">Detect Position</h4>
+      <p class="text-slate-400 text-xs">Engine checks if back-dated, reversal, or chronological</p>
+    </div>
+    <div class="hidden md:flex items-center justify-center text-brand-400/40 text-2xl">&rarr;</div>
+    <div class="flow-step md:col-span-1">
+      <div class="step-num">3</div>
+      <h4 class="font-semibold mb-1 text-sm">Rollback &middot; Replay &middot; Sync</h4>
+      <p class="text-slate-400 text-xs">Fork, recompute, and reconcile deltas back into primary ledger</p>
+    </div>
+  </div>
+
+  <!-- Algorithm pseudocode -->
+  <div class="card p-6 md:p-8 max-w-4xl mx-auto">
+    <div class="flex items-center gap-3 mb-5">
+      <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+      <span class="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span>
+      <span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+      <span class="mono text-xs text-slate-500 ml-2">LedgerService.applyLedgerActivity()</span>
+    </div>
+    <pre class="code-block p-5 overflow-x-auto text-slate-300"><code><span class="text-slate-500">// Pseudocode — the actual engine branching logic</span>
+<span class="text-purple-400">for each</span> activity <span class="text-purple-400">in</span> pendingActivities:
+
+  <span class="text-purple-400">if</span> activity.<span class="text-brand-400">isBackdated</span>(ledger):
+    retroLedger = ledger.<span class="text-green-400">rollbackTo</span>(activity.effectiveAt)
+    retroLedger.<span class="text-green-400">apply</span>(activity)
+    <span class="text-green-400">replaySubsequent</span>(retroLedger, activitiesAfter)
+    ledger.<span class="text-yellow-400">syncWith</span>(retroLedger)  <span class="text-slate-500">// delta reconciliation</span>
+
+  <span class="text-purple-400">else if</span> activity.<span class="text-brand-400">isReversal</span>():
+    ledger.<span class="text-red-400">addCompensation</span>(negate(originalImpact))
+    retroLedger = ledger.<span class="text-green-400">rollbackBefore</span>(originalActivity)
+    <span class="text-green-400">replaySubsequent</span>(retroLedger, activitiesAfter)
+    ledger.<span class="text-yellow-400">syncWith</span>(retroLedger)  <span class="text-slate-500">// delta reconciliation</span>
+
+  <span class="text-purple-400">else</span>:
+    activity.<span class="text-green-400">applyTo</span>(ledger)       <span class="text-slate-500">// chronological — fast path</span></code></pre>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SDK INTEGRATION -->
+<!-- ============================================================ -->
+<section id="integration" class="max-w-6xl mx-auto px-6 py-24">
+  <p class="section-label mb-4">// integration</p>
+  <h2 class="text-3xl md:text-4xl font-bold mb-14">Drop into your Java stack in minutes</h2>
+
+  <div class="grid md:grid-cols-2 gap-8" x-data="{ tab: 'maven' }">
+    <div>
+      <div class="flex gap-2 mb-4">
+        <button @click="tab='maven'" :class="tab==='maven' ? 'bg-brand-500/20 text-brand-400 border-brand-500/30' : 'text-slate-500 border-transparent'" class="badge border px-4 py-1.5 cursor-pointer transition-colors">pom.xml</button>
+        <button @click="tab='java'" :class="tab==='java' ? 'bg-brand-500/20 text-brand-400 border-brand-500/30' : 'text-slate-500 border-transparent'" class="badge border px-4 py-1.5 cursor-pointer transition-colors">Java</button>
+      </div>
+
+      <div x-show="tab==='maven'" class="code-block p-5 overflow-x-auto text-slate-300">
+<pre><code><span class="text-slate-500">&lt;!-- Add to your pom.xml --&gt;</span>
+<span class="text-red-400">&lt;dependency&gt;</span>
+  <span class="text-yellow-400">&lt;groupId&gt;</span>io.github.v1bh0r<span class="text-yellow-400">&lt;/groupId&gt;</span>
+  <span class="text-yellow-400">&lt;artifactId&gt;</span>precise-ledger-pro<span class="text-yellow-400">&lt;/artifactId&gt;</span>
+  <span class="text-yellow-400">&lt;version&gt;</span>1.0.0<span class="text-yellow-400">&lt;/version&gt;</span>
+<span class="text-red-400">&lt;/dependency&gt;</span></code></pre>
+      </div>
+
+      <div x-show="tab==='java'" x-cloak class="code-block p-5 overflow-x-auto text-slate-300">
+<pre><code><span class="text-slate-500">// Apply activities — engine handles backdated &amp; reversals</span>
+<span class="text-purple-400">var</span> ledger = ledgerService.<span class="text-green-400">getLedger</span>(loanId);
+<span class="text-purple-400">var</span> clock  = ledgerService.<span class="text-green-400">getCurrentLedgerClock</span>(ledger);
+
+ledgerService.<span class="text-brand-400">applyLedgerActivity</span>(
+    ledger, activity, clock, temporalContext
+);
+
+<span class="text-slate-500">// That's it. Balances are correct.</span>
+<span class="text-purple-400">var</span> balance = ledger.<span class="text-green-400">getCurrentBalance</span>();
+<span class="text-slate-500">// → Balance[principal=USD 991,000.00, interest=...]</span></code></pre>
+      </div>
+    </div>
+
+    <div class="flex flex-col justify-center">
+      <h3 class="font-semibold text-xl mb-4">Your code, your servers, your audit trail</h3>
+      <ul class="space-y-3 text-slate-400 text-[0.92rem]">
+        <li class="check">Perpetual license &mdash; keeps working even if your support lapses</li>
+        <li class="check">Full source code included with Business plans for auditing &amp; safe-keeping</li>
+        <li class="check">Self-hosted &mdash; deploy on-prem, private cloud, or air-gapped environments</li>
+        <li class="check">Works with any JPA/Hibernate datastore (PostgreSQL, MySQL, Oracle, H2)</li>
+        <li class="check">No phone-home, no telemetry, no vendor lock-in</li>
+        <li class="check">Quarkus, Spring Boot, or standalone &mdash; your choice</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PRICING -->
+<!-- ============================================================ -->
+<section id="pricing" class="max-w-6xl mx-auto px-6 py-24">
+  <p class="section-label mb-4">// pricing</p>
+  <h2 class="text-3xl md:text-4xl font-bold mb-5">Perpetual license. Yours forever.</h2>
+  <p class="text-slate-400 mb-14 max-w-2xl">One price, deploy anywhere. Every plan includes a perpetual usage license, the 53-test acceptance suite, and your first year of updates &amp; support.</p>
+
+  <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+    <!-- Starter -->
+    <div class="pricing-card">
+      <h3 class="mono text-brand-400 text-sm font-semibold mb-2">STARTER</h3>
+      <div class="flex items-baseline gap-1 mb-1">
+        <span class="text-4xl font-bold">$2,999</span>
+        <span class="text-slate-500 text-sm">perpetual</span>
+      </div>
+      <p class="text-slate-500 text-sm mb-6">+ $499 / year for support renewal</p>
+      <hr class="border-white/5 mb-6" />
+      <ul class="space-y-3 text-slate-400 text-sm mb-8">
+        <li class="check">Single production node</li>
+        <li class="check">Compiled JAR artifact</li>
+        <li class="check">Email support (48hr SLA)</li>
+        <li class="check">1 year of version updates included</li>
+        <li class="check">Full acceptance test suite</li>
+        <li class="check">Self-hosted, no telemetry</li>
+      </ul>
+      <a href="mailto:sales@preciseledgerpro.com?subject=Starter%20License%20Inquiry" class="btn-outline w-full text-center block">Contact Sales</a>
+    </div>
+
+    <!-- Enterprise -->
+    <div class="pricing-card featured">
+      <div class="absolute -top-3 right-6">
+        <span class="badge bg-brand-500 text-white px-3 py-1 text-xs">MOST POPULAR</span>
+      </div>
+      <h3 class="mono text-brand-400 text-sm font-semibold mb-2">BUSINESS</h3>
+      <div class="flex items-baseline gap-1 mb-1">
+        <span class="text-4xl font-bold">$9,999</span>
+        <span class="text-slate-500 text-sm">perpetual</span>
+      </div>
+      <p class="text-slate-500 text-sm mb-6">+ $1,999 / year for support renewal</p>
+      <hr class="border-white/5 mb-6" />
+      <ul class="space-y-3 text-slate-400 text-sm mb-8">
+        <li class="check">Unlimited production nodes</li>
+        <li class="check"><strong class="text-white">Full source code</strong> for audit, compliance &amp; safe-keeping</li>
+        <li class="check">Priority support (8hr SLA)</li>
+        <li class="check">1 year of version updates included</li>
+        <li class="check">White-glove onboarding session</li>
+        <li class="check">Custom integration consulting hours available</li>
+      </ul>
+      <a href="mailto:sales@preciseledgerpro.com?subject=Business%20License%20Inquiry" class="btn-primary w-full text-center block">Contact Sales</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- FAQ -->
+<!-- ============================================================ -->
+<section class="max-w-3xl mx-auto px-6 py-24" x-data="{ open: null }">
+  <p class="section-label mb-4">// faq</p>
+  <h2 class="text-3xl font-bold mb-10">Frequently asked questions</h2>
+  <div class="space-y-3">
+
+    <div class="card overflow-hidden">
+      <button @click="open = open === 1 ? null : 1" class="w-full text-left px-6 py-4 flex items-center justify-between">
+        <span class="font-medium">What does "perpetual license" mean?</span>
+        <span class="text-brand-400 transition-transform" :class="open===1 && 'rotate-45'">+</span>
+      </button>
+      <div x-show="open===1" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
+        You pay once and can use the SDK in production forever. There is no subscription required to keep running. The optional annual support renewal gives you access to new versions, security patches, and priority email support.
+      </div>
+    </div>
+
+    <div class="card overflow-hidden">
+      <button @click="open = open === 2 ? null : 2" class="w-full text-left px-6 py-4 flex items-center justify-between">
+        <span class="font-medium">Do I get the source code?</span>
+        <span class="text-brand-400 transition-transform" :class="open===2 && 'rotate-45'">+</span>
+      </button>
+      <div x-show="open===2" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
+        The Business plan includes full source code access. This is essential for financial institutions that need to audit third-party code, maintain escrow copies, or make customisations. The Starter plan ships as a compiled JAR with full Javadoc and the acceptance test suite.
+      </div>
+    </div>
+
+    <div class="card overflow-hidden">
+      <button @click="open = open === 3 ? null : 3" class="w-full text-left px-6 py-4 flex items-center justify-between">
+        <span class="font-medium">Can I use this with Spring Boot?</span>
+        <span class="text-brand-400 transition-transform" :class="open===3 && 'rotate-45'">+</span>
+      </button>
+      <div x-show="open===3" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
+        Yes. While the reference implementation is built on Quarkus, the core ledger engine (<code class="mono text-brand-400">Ledger</code>, <code class="mono text-brand-400">LedgerService</code>, activity types) is framework-agnostic. It works with any JPA/Hibernate environment including Spring Boot, Micronaut, or plain Java SE.
+      </div>
+    </div>
+
+    <div class="card overflow-hidden">
+      <button @click="open = open === 4 ? null : 4" class="w-full text-left px-6 py-4 flex items-center justify-between">
+        <span class="font-medium">Which databases are supported?</span>
+        <span class="text-brand-400 transition-transform" :class="open===4 && 'rotate-45'">+</span>
+      </button>
+      <div x-show="open===4" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
+        Any database supported by Hibernate: PostgreSQL (recommended for production), MySQL, Oracle, SQL Server, H2 (testing). The SDK uses standard JPA entities with no database-specific SQL.
+      </div>
+    </div>
+
+    <div class="card overflow-hidden">
+      <button @click="open = open === 5 ? null : 5" class="w-full text-left px-6 py-4 flex items-center justify-between">
+        <span class="font-medium">What happens if I don't renew support?</span>
+        <span class="text-brand-400 transition-transform" :class="open===5 && 'rotate-45'">+</span>
+      </button>
+      <div x-show="open===5" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
+        Your software continues working — it's a perpetual license. You keep the last version you received. You just won't receive future updates, security patches, or priority support until you renew.
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- CTA -->
+<!-- ============================================================ -->
+<section class="border-t border-b border-white/5 py-20 px-6 text-center" style="background: linear-gradient(180deg, rgba(14,165,233,0.04) 0%, transparent 100%);">
+  <h2 class="text-3xl md:text-4xl font-bold mb-4">Ready to ship a correct ledger?</h2>
+  <p class="text-slate-400 mb-10 max-w-lg mx-auto">See the rollback-replay-sync engine handle reversals and backdated payments in real time, then talk to us about licensing.</p>
+  <div class="flex flex-col sm:flex-row gap-4 justify-center">
+    <a href="demo.html" class="btn-primary">View Live Demo</a>
+    <a href="mailto:sales@preciseledgerpro.com?subject=License%20Inquiry" class="btn-outline">Contact Sales</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="max-w-6xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-500 text-sm">
+  <span class="mono text-brand-400/60">PreciseLedgerPro</span>
+  <span>&copy; 2024&ndash;2026 Precise Ledger Pro. All rights reserved.</span>
+  <a href="https://github.com/v1bh0r/precise-ledger-pro" class="hover:text-brand-400 transition-colors">GitHub &rarr;</a>
+</footer>
+
+</body>
+</html>

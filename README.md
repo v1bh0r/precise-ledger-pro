@@ -2,6 +2,14 @@
 
 [![Java CI with Maven](https://github.com/v1bh0r/precise-ledger-pro/actions/workflows/maven.yml/badge.svg)](https://github.com/v1bh0r/precise-ledger-pro/actions/workflows/maven.yml)
 
+## Marketing Site
+
+A static marketing page and interactive ledger demo are published via **GitHub Pages** from the `/docs` folder:
+
+**[https://v1bh0r.github.io/precise-ledger-pro/](https://v1bh0r.github.io/precise-ledger-pro/)**
+
+To enable GitHub Pages: **Settings → Pages → Source: Deploy from a branch → Branch: `main`, folder: `/docs` → Save**.
+
 ## Development
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
