@@ -244,9 +244,37 @@
 
         <!-- Info text after completion -->
         <template x-if="currentStep >= activities.length && activities.length > 0">
-          <div class="card p-5 mt-4 border-green-500/20">
-            <p class="text-green-400 text-sm font-medium mb-1">&#10003; All 9 activities applied successfully</p>
-            <p class="text-slate-400 text-xs">The ledger handled a reversal (activity 8) and a backdated payment (activity 9) using the retroactive roll-back &rarr; replay &rarr; sync engine. All balances are deterministically correct.</p>
+          <div>
+            <div class="card p-5 mt-4 border-green-500/20">
+              <p class="text-green-400 text-sm font-medium mb-1">&#10003; All 9 activities applied successfully</p>
+              <p class="text-slate-400 text-xs">The ledger handled a reversal (activity 8) and a backdated payment (activity 9) using the retroactive roll-back &rarr; replay &rarr; sync engine. All balances are deterministically correct.</p>
+            </div>
+
+            <div class="card p-5 mt-4 border-brand-500/15">
+              <h4 class="text-sm font-semibold text-white mb-3">What you just observed</h4>
+
+              <p class="text-slate-400 text-xs leading-relaxed mb-3">
+                <span class="text-brand-400 font-medium">Why every adjustment row matters.</span>
+                When a past activity is reversed or a backdated payment arrives, the engine cannot simply edit the old rows&hairsp;&mdash;&hairsp;that would destroy the audit trail.
+                Instead, it appends <span class="text-amber-400">Adjustment</span> entries that record the <em>exact delta</em> between what was originally calculated and what the corrected ledger now requires.
+                Each adjustment is individually signed, timestamped, and traceable back to the activity it corrects, so an auditor can reconstruct both the &ldquo;before&rdquo; and &ldquo;after&rdquo; states of the ledger without any hidden mutations.
+              </p>
+
+              <p class="text-slate-400 text-xs leading-relaxed mb-3">
+                <span class="text-brand-400 font-medium">The backdated payment (activity&nbsp;9).</span>
+                Payment #768 ($4,000) carries an <span class="mono text-slate-300">effectiveAt</span> of March&nbsp;3 but was submitted on March&nbsp;5.
+                The engine rolls the ledger back to March&nbsp;3, inserts the payment at its true economic date, then replays every subsequent activity&hairsp;&mdash;&hairsp;SOD accruals, payments, the earlier reversal&hairsp;&mdash;&hairsp;on the updated balances.
+                Any differences between the old and new replay are emitted as adjustment entries, keeping the primary ledger perfectly in sync with the corrected retroactive ledger.
+              </p>
+
+              <p class="text-slate-400 text-xs leading-relaxed">
+                <span class="text-brand-400 font-medium">The residual $0.01 in interest.</span>
+                This is the classic &ldquo;penny rounding&rdquo; artifact of financial systems.
+                Each ledger entry rounds to the cent independently (USD HALF_UP).
+                When the retroactive engine replays and diffs, the sum of individually-rounded adjustments can differ by a cent from the rounded accumulated total&hairsp;&mdash;&hairsp;e.g., two daily accruals of <span class="mono text-slate-300">$273.97</span> sum to <span class="mono text-slate-300">$547.94</span>, but the running balance rounded from full precision is <span class="mono text-slate-300">$547.95</span>.
+                That one-cent gap is deterministic, auditable, and consistent across every replay. It is not a bug; it is an inherent property of rounding at entry boundaries.
+              </p>
+            </div>
           </div>
         </template>
       </div>
