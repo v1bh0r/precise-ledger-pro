@@ -264,7 +264,8 @@
                 <span class="text-brand-400 font-medium">The backdated payment (activity&nbsp;9).</span>
                 Payment #768 ($4,000) carries an <span class="mono text-slate-300">effectiveAt</span> of March&nbsp;3 but was submitted on March&nbsp;5.
                 The engine rolls the ledger back to March&nbsp;3, inserts the payment at its true economic date, then replays every subsequent activity&hairsp;&mdash;&hairsp;SOD accruals, payments, the earlier reversal&hairsp;&mdash;&hairsp;on the updated balances.
-                Any differences between the old and new replay are emitted as adjustment entries, keeping the primary ledger perfectly in sync with the corrected retroactive ledger.
+                Notice that <em>no additional adjustment entries appeared</em> this time: the $4,000 reduction on a ~$1&thinsp;M principal changes the daily interest by less than a cent once rounded, so the replayed SOD accruals and payment&nbsp;#456 produce the same values they already had after the reversal.
+                When deltas are zero the engine simply skips the adjustment&hairsp;&mdash;&hairsp;only real differences get recorded.
               </p>
 
               <p class="text-slate-400 text-xs leading-relaxed">
