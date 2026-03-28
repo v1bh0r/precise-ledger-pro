@@ -106,14 +106,15 @@
           <div class="flex items-center justify-center gap-1 mt-3">
             <span class="pipeline-step bg-brand-500/15 text-brand-400">Rollback</span>
             <span class="pipeline-arrow">&rarr;</span>
-            <span class="pipeline-step bg-brand-500/15 text-brand-400">Re-evaluate</span>
-            <span class="pipeline-arrow">&rarr;</span>
             <span class="pipeline-step bg-brand-500/15 text-brand-400">Replay</span>
+            <span class="pipeline-arrow">&rarr;</span>
+            <span class="pipeline-step bg-brand-500/15 text-brand-400">Trace</span>
             <span class="pipeline-arrow">&rarr;</span>
             <span class="pipeline-step bg-brand-500/15 text-brand-400">Diff</span>
             <span class="pipeline-arrow">&rarr;</span>
             <span class="pipeline-step bg-brand-500/15 text-brand-400">Append</span>
           </div>
+          <div class="text-[0.55rem] text-slate-600 mono mt-2">Outcome: individually traced correction entries</div>
         </div>
       </div>
     </div>
@@ -125,12 +126,13 @@
     <!-- ===== TOP STRIP: Header + Controls + KPIs ===== -->
     <div class="mb-6">
       <div class="text-center mb-5">
-        <h1 class="text-2xl font-bold mb-2">Same Events. <span class="gradient-text">Different Truth.</span></h1>
+        <h1 class="text-2xl font-bold mb-2">Same Corrections. <span class="gradient-text">Different Traceability.</span></h1>
         <p class="text-slate-400 max-w-3xl mx-auto text-sm leading-relaxed">
           A $1,000,000 loan processes 9 identical events through two ledger architectures.
-          Watch how a <span class="text-amber-400 font-medium">conventional ledger</span> and
-          <span class="text-brand-400 font-medium">PreciseLedgerPro</span> diverge when facing
-          a <span class="text-red-400">reversal</span> and a <span class="text-amber-400">backdated payment</span>.
+          Both handle a <span class="text-red-400">reversal</span> and a <span class="text-amber-400">backdated payment</span>
+          with downstream corrections. One uses <span class="text-amber-400 font-medium">grouped adjustments</span>;
+          the other traces <span class="text-brand-400 font-medium">each correction to its source entry</span>.
+          Read both ledgers and see which one you can explain row by row.
         </p>
       </div>
 
@@ -157,7 +159,7 @@
           <div class="text-xs font-medium" :class="hasDivergence() ? 'drift-alert' : 'text-green-400'" x-text="hasDivergence() ? getDivergenceSummary() : 'None'"></div>
         </div>
         <div class="card p-3 text-center">
-          <div class="text-[0.6rem] text-slate-500 mono mb-1">ECONOMIC CORRECTNESS</div>
+          <div class="text-[0.6rem] text-slate-500 mono mb-1">BALANCE ACCURACY</div>
           <div class="text-xs font-medium">
             <span class="text-amber-400" x-text="getNaiveScore() + '%'"></span>
             <span class="text-slate-600 mx-1">vs</span>
@@ -165,7 +167,7 @@
           </div>
         </div>
         <div class="card p-3 text-center">
-          <div class="text-[0.6rem] text-slate-500 mono mb-1">DOWNSTREAM CORRECTIONS</div>
+          <div class="text-[0.6rem] text-slate-500 mono mb-1">ENTRY-LEVEL CORRECTIONS</div>
           <div class="text-xs font-medium">
             <span class="text-amber-400" x-text="countNaiveAdjustments()"></span>
             <span class="text-slate-600 mx-1">vs</span>
@@ -173,11 +175,11 @@
           </div>
         </div>
         <div class="card p-3 text-center">
-          <div class="text-[0.6rem] text-slate-500 mono mb-1">REPLAY INTEGRITY</div>
+          <div class="text-[0.6rem] text-slate-500 mono mb-1">ENTRY-LEVEL TRACEABILITY</div>
           <div class="text-xs font-medium">
-            <span class="text-amber-400">No</span>
+            <span class="text-amber-400">Grouped</span>
             <span class="text-slate-600 mx-1">vs</span>
-            <span class="text-brand-400">Yes</span>
+            <span class="text-brand-400">Per-entry</span>
           </div>
         </div>
       </div>
@@ -220,7 +222,7 @@
       <div>
         <div class="flex items-center gap-2 mb-3">
           <h3 class="section-label-amber">// conventional ledger</h3>
-          <span class="badge bg-amber-500/15 text-amber-400 border border-amber-500/20">Append-only, no replay</span>
+          <span class="badge bg-amber-500/15 text-amber-400 border border-amber-500/20">Grouped corrections</span>
         </div>
 
         <!-- Naive Balances -->
@@ -243,11 +245,12 @@
 
         <!-- Naive Engine Status -->
         <template x-if="engines.naive.status">
-          <div class="text-[0.6rem] mono mb-2 px-1" :class="engines.naive.status.includes('stale') ? 'text-amber-400' : 'text-slate-500'" x-text="engines.naive.status"></div>
+          <div class="text-[0.6rem] mono mb-2 px-1" :class="engines.naive.status.includes('cannot') ? 'text-amber-400' : 'text-slate-500'" x-text="engines.naive.status"></div>
         </template>
 
         <!-- Naive Table -->
-        <div class="card-naive overflow-x-auto" style="max-height:420px;overflow-y:auto;">
+        <div class="card-naive overflow-x-auto" style="max-height:420px;overflow-y:auto;"
+             x-effect="engines.naive.entries && $nextTick(() => { $el.scrollTop = $el.scrollHeight })">
           <table class="ledger-table">
             <thead>
               <tr>
@@ -275,10 +278,16 @@
                             'bg-purple-500/15 text-purple-400': e.entryType === 'StartOfDay',
                             'bg-green-500/15 text-green-400': e.entryType === 'Payment',
                             'bg-red-500/15 text-red-400': e.entryType === 'Reversal',
+                            'bg-amber-500/15 text-amber-400': e.entryType === 'Adjustment',
                           }"
                           x-text="e.entryType"></span>
                   </td>
-                  <td class="text-slate-500" x-text="e.sourceActivity"></td>
+                  <td>
+                    <span class="text-slate-500" x-text="e.sourceActivity"></span>
+                    <template x-if="e.reason">
+                      <div class="text-[0.5rem] text-slate-600 mt-0.5 whitespace-normal max-w-[140px]" x-text="e.reason"></div>
+                    </template>
+                  </td>
                   <td :class="deltaClass(e.principal)" x-text="formatDelta(e.principal)"></td>
                   <td :class="deltaClass(e.interest)" x-text="formatDelta(e.interest)"></td>
                   <td x-text="'$' + formatNum(e.principalBalance)"></td>
@@ -309,7 +318,7 @@
       <div>
         <div class="flex items-center gap-2 mb-3">
           <h3 class="section-label">// PreciseLedgerPro</h3>
-          <span class="badge bg-brand-500/15 text-brand-400 border border-brand-500/20">Rollback &rarr; Replay &rarr; Sync</span>
+          <span class="badge bg-brand-500/15 text-brand-400 border border-brand-500/20">Entry-level traced corrections</span>
         </div>
 
         <!-- Precise Balances -->
@@ -330,7 +339,8 @@
         </template>
 
         <!-- Precise Table -->
-        <div class="card-precise overflow-x-auto" style="max-height:420px;overflow-y:auto;">
+        <div class="card-precise overflow-x-auto" style="max-height:420px;overflow-y:auto;"
+             x-effect="engines.precise.entries && $nextTick(() => { $el.scrollTop = $el.scrollHeight })">
           <table class="ledger-table">
             <thead>
               <tr>
@@ -362,7 +372,12 @@
                           }"
                           x-text="e.entryType"></span>
                   </td>
-                  <td class="text-slate-500" x-text="e.sourceActivity"></td>
+                  <td>
+                    <span class="text-slate-500" x-text="e.sourceActivity"></span>
+                    <template x-if="e.reason">
+                      <div class="text-[0.5rem] text-brand-400/60 mt-0.5 whitespace-normal max-w-[140px]" x-text="e.reason"></div>
+                    </template>
+                  </td>
                   <td :class="deltaClass(e.principal)" x-text="formatDelta(e.principal)"></td>
                   <td :class="deltaClass(e.interest)" x-text="formatDelta(e.interest)"></td>
                   <td x-text="'$' + formatNum(e.principalBalance)"></td>
@@ -407,28 +422,22 @@
     <!-- ===== EVENT IMPACT DIFF TABLE ===== -->
     <template x-if="currentStep >= 8">
       <div class="mb-6">
-        <h3 class="section-label mb-3">// event impact comparison</h3>
+        <h3 class="section-label mb-3">// can you explain these corrections?</h3>
         <div class="card overflow-x-auto">
           <table class="ledger-table">
             <thead>
               <tr>
-                <th class="!text-left">Activity</th>
-                <th>Naive &Delta; Princ.</th>
-                <th>Naive &Delta; Int.</th>
-                <th>Precise &Delta; Princ.</th>
-                <th>Precise &Delta; Int.</th>
-                <th class="!text-left">Why Different</th>
+                <th class="!text-left">Downstream Correction</th>
+                <th class="!text-left">Conventional Ledger</th>
+                <th class="!text-left">PreciseLedgerPro</th>
               </tr>
             </thead>
             <tbody>
-              <template x-for="row in getImpactDiffRows()" :key="row.activity">
-                <tr :class="{'text-amber-400': row.diverges}">
-                  <td class="!text-left text-slate-300" x-text="row.activity"></td>
-                  <td :class="deltaClass(row.naivePrinc)" x-text="formatDelta(row.naivePrinc)"></td>
-                  <td :class="deltaClass(row.naiveInt)" x-text="formatDelta(row.naiveInt)"></td>
-                  <td :class="deltaClass(row.precisePrinc)" x-text="formatDelta(row.precisePrinc)"></td>
-                  <td :class="deltaClass(row.preciseInt)" x-text="formatDelta(row.preciseInt)"></td>
-                  <td class="!text-left text-slate-500 text-[0.6rem]" x-text="row.reason"></td>
+              <template x-for="row in getImpactDiffRows()" :key="row.correction">
+                <tr>
+                  <td class="!text-left text-slate-300 whitespace-normal" x-text="row.correction"></td>
+                  <td class="!text-left text-amber-400/80 text-[0.6rem] whitespace-normal" x-text="row.conventional"></td>
+                  <td class="!text-left text-brand-400/80 text-[0.6rem] whitespace-normal" x-text="row.precise"></td>
                 </tr>
               </template>
             </tbody>
@@ -457,7 +466,7 @@
               </div>
             </template>
             <div class="mt-3 pt-2 border-t border-amber-500/10">
-              <span class="badge bg-amber-500/15 text-amber-400 border border-amber-500/20">Needs interpretation</span>
+              <span class="badge bg-amber-500/15 text-amber-400 border border-amber-500/20">Balances correct, traceability lost</span>
             </div>
           </div>
           <!-- Precise Scorecard -->
@@ -475,7 +484,7 @@
               </div>
             </template>
             <div class="mt-3 pt-2 border-t border-brand-500/10">
-              <span class="badge bg-brand-500/15 text-brand-400 border border-brand-500/20">Deterministically grounded</span>
+              <span class="badge bg-brand-500/15 text-brand-400 border border-brand-500/20">Every correction traced</span>
             </div>
           </div>
         </div>
@@ -498,28 +507,28 @@
             </thead>
             <tbody>
               <tr>
-                <td class="!text-left text-slate-300">Explain final balance from entries?</td>
+                <td class="!text-left text-slate-300">Balances correct after corrections?</td>
+                <td class="!text-center text-green-400">Yes</td>
+                <td class="!text-center text-green-400">Yes</td>
+              </tr>
+              <tr>
+                <td class="!text-left text-slate-300">Trace which entry each correction addresses?</td>
+                <td class="!text-center text-red-400">No</td>
+                <td class="!text-center text-green-400">Yes</td>
+              </tr>
+              <tr>
+                <td class="!text-left text-slate-300">Decompose a grouped adjustment?</td>
+                <td class="!text-center text-red-400">N/A (grouped)</td>
+                <td class="!text-center text-green-400">Each already decomposed</td>
+              </tr>
+              <tr>
+                <td class="!text-left text-slate-300">Handle subsequent retroactive event cleanly?</td>
+                <td class="!text-center text-amber-400">Fragile</td>
+                <td class="!text-center text-green-400">Yes</td>
+              </tr>
+              <tr>
+                <td class="!text-left text-slate-300">Read ledger top-down, explain every row?</td>
                 <td class="!text-center text-amber-400">Partial</td>
-                <td class="!text-center text-green-400">Yes</td>
-              </tr>
-              <tr>
-                <td class="!text-left text-slate-300">Reconstruct causal chain?</td>
-                <td class="!text-center text-amber-400">Weak</td>
-                <td class="!text-center text-green-400">Yes</td>
-              </tr>
-              <tr>
-                <td class="!text-left text-slate-300">Handles backdated economic order?</td>
-                <td class="!text-center text-red-400">No</td>
-                <td class="!text-center text-green-400">Yes</td>
-              </tr>
-              <tr>
-                <td class="!text-left text-slate-300">Avoids silent mutation?</td>
-                <td class="!text-center text-amber-400">Maybe</td>
-                <td class="!text-center text-green-400">Yes</td>
-              </tr>
-              <tr>
-                <td class="!text-left text-slate-300">Deterministic replay-safe?</td>
-                <td class="!text-center text-red-400">No</td>
                 <td class="!text-center text-green-400">Yes</td>
               </tr>
             </tbody>
@@ -536,18 +545,18 @@
           <div class="card-naive p-5">
             <div class="text-amber-400 text-sm font-semibold mb-2">Conventional Ledger &mdash; Complete</div>
             <ul class="text-xs text-slate-400 space-y-1.5">
-              <li>&bull; All 9 activities processed. Ledger internally consistent as appended.</li>
-              <li>&bull; Economically stale after retroactive events. SOD accruals and payment allocations downstream of the reversal were not recomputed.</li>
-              <li>&bull; Requires manual reasoning to explain balance integrity. An auditor would need to reconstruct the corrected economic order outside the ledger.</li>
+              <li>&bull; All 9 activities processed. Balances correct to within $0.01.</li>
+              <li>&bull; Downstream corrections applied as a grouped adjustment &mdash; balance integrity preserved, but individual entry-level audit trail lost.</li>
+              <li>&bull; An auditor cannot determine from the ledger alone which entries the +$3.30 grouped adjustment corrects. A subsequent retroactive event would require reconstructing this decomposition manually.</li>
             </ul>
           </div>
           <!-- Precise Verdict -->
           <div class="card-precise p-5">
             <div class="text-brand-400 text-sm font-semibold mb-2">PreciseLedgerPro &mdash; Complete</div>
             <ul class="text-xs text-slate-400 space-y-1.5">
-              <li>&bull; All 9 activities processed. Every downstream correction explicitly auditable.</li>
-              <li>&bull; Economically correct, append-only, replay-safe. Adjustment entries record exact deltas for each affected derived entry.</li>
-              <li>&bull; An auditor can reconstruct both the &ldquo;before&rdquo; and &ldquo;after&rdquo; states of any retroactive change from the ledger alone.</li>
+              <li>&bull; All 9 activities processed. Every downstream correction individually traced to its source entry.</li>
+              <li>&bull; Each adjustment row names the entry it corrects and records the exact delta. Append-only, replay-safe.</li>
+              <li>&bull; An auditor can reconstruct both the &ldquo;before&rdquo; and &ldquo;after&rdquo; states of any retroactive change from the ledger alone. Subsequent retroactive events compose cleanly.</li>
             </ul>
           </div>
         </div>
@@ -556,9 +565,9 @@
         <div class="card p-5 border-brand-500/15">
           <h4 class="text-sm font-semibold text-white mb-3">Executive Summary</h4>
           <ul class="text-xs text-slate-400 space-y-2">
-            <li><span class="text-white font-medium">Same events. Different truth.</span> Both engines processed identical input. Only one produced an economically correct ledger.</li>
-            <li><span class="text-white font-medium">Conventional posting preserves rows; PreciseLedgerPro preserves causality.</span> The additional adjustment rows in PreciseLedgerPro are not complexity &mdash; they are explicit evidence of downstream corrections that the conventional engine silently omitted.</li>
-            <li><span class="text-white font-medium">Retroactive correctness is not a reporting feature. It is a ledger architecture property.</span> No amount of post-hoc reconciliation can substitute for an engine that maintains causal integrity through reversals and backdated events.</li>
+            <li><span class="text-white font-medium">Same events. Same corrections. Different traceability.</span> Both engines processed identical input and both applied downstream corrections. The difference is how those corrections are recorded.</li>
+            <li><span class="text-white font-medium">Grouped adjustments preserve balances; entry-level adjustments preserve causality.</span> The conventional ledger&rsquo;s +$3.30 grouped correction is mathematically sound. But it merges three distinct corrections into one opaque entry, losing the per-entry audit trail.</li>
+            <li><span class="text-white font-medium">The second retroactive event reveals the architectural limit.</span> When Payment #768 arrives backdated, PreciseLedgerPro&rsquo;s individually traced adjustments allow clean re-derivation. The conventional engine must reason about adjustments-to-adjustments &mdash; and with grouped entries, that decomposition is impossible without starting over.</li>
           </ul>
         </div>
       </div>
@@ -577,18 +586,19 @@
 /**
  * Precise Ledger Pro — Comparative Demo
  *
- * Side-by-side comparison of a conventional ledger vs PreciseLedgerPro
- * processing the same 9 loan activities.
+ * Side-by-side comparison of a conventional ledger (grouped corrections)
+ * vs PreciseLedgerPro (entry-level traced corrections) processing the
+ * same 9 loan activities.
  *
  * Financial data for PreciseLedgerPro matches verified test expectations from:
  *   applyLedgerActivities_test1/apply_ledger_activities_test1_expectation.csv
  *
  * The conventional ledger follows these rules:
  *   1. Apply activities in processing order.
- *   2. No retroactive downstream recalculation.
- *   3. Reversal adds local compensation only.
- *   4. Backdated payment appended at end, does not replay downstream.
- *   5. Running balances are ledger-local, not economically rederived.
+ *   2. Reversal adds compensation + grouped downstream adjustment.
+ *   3. Grouped adjustment corrects net balance but does not decompose per entry.
+ *   4. Backdated payment appended against processing-time balances.
+ *   5. Running balances are ledger-local, grouped corrections are opaque.
  */
 function ledgerDemo() {
   const DAILY_INTEREST_1M = 273.9726041909307;
@@ -620,17 +630,17 @@ function ledgerDemo() {
     },
 
     naiveScores: [
-      { label: 'Economic correctness', score: 55 },
-      { label: 'Audit clarity', score: 60 },
-      { label: 'Retroactive safety', score: 20 },
-      { label: 'Determinism after correction', score: 35 },
+      { label: 'Balance accuracy', score: 98 },
+      { label: 'Entry-level traceability', score: 15 },
+      { label: 'Retroactive composability', score: 25 },
+      { label: 'Audit readability', score: 40 },
     ],
 
     preciseScores: [
-      { label: 'Economic correctness', score: 100 },
-      { label: 'Audit clarity', score: 95 },
-      { label: 'Retroactive safety', score: 100 },
-      { label: 'Determinism after correction', score: 100 },
+      { label: 'Balance accuracy', score: 100 },
+      { label: 'Entry-level traceability', score: 100 },
+      { label: 'Retroactive composability', score: 100 },
+      { label: 'Audit readability', score: 95 },
     ],
 
     activities: [
@@ -682,7 +692,7 @@ function ledgerDemo() {
         effectiveAt: '2024-03-05T13:00', transactionTime: '2024-03-05T13:00',
         isBackdated: false, reversalOf: '234',
         causesReplay: true, causesNaiveDrift: true,
-        comparisonNote: 'Conventional: local compensation only. PreciseLedgerPro: rollback, replay, append adjustments.',
+        comparisonNote: 'Conventional: compensation + grouped adjustment. PreciseLedgerPro: compensation + individually traced corrections.',
       },
       {
         activityId: '768', commonName: 'Backdated Payment #768', activityType: 'Transaction',
@@ -690,7 +700,7 @@ function ledgerDemo() {
         effectiveAt: '2024-03-03T14:00', transactionTime: '2024-03-05T15:00',
         isBackdated: true,
         causesReplay: true, causesNaiveDrift: true,
-        comparisonNote: 'Conventional: appended at end, stale downstream. PreciseLedgerPro: retroactive insert, replay, zero-delta skip.',
+        comparisonNote: 'Conventional: appended at processing-time balances. PreciseLedgerPro: retroactive insert, each correction traced.',
       },
     ],
 
@@ -707,22 +717,23 @@ function ledgerDemo() {
 
     /* ========== ENTRY CONSTRUCTORS ========== */
 
-    naiveEntry(type, source, effectiveAt, principal, interest, principalBalance, interestBalance, statusBadge, statusBadgeClass, stale) {
+    naiveEntry(type, source, effectiveAt, principal, interest, principalBalance, interestBalance, statusBadge, statusBadgeClass, stale, reason) {
       return {
         id: ++this.naiveIdCounter, entryType: type, sourceActivity: source,
         effectiveAt, principal, interest,
         principalBalance, interestBalance,
         isNew: true, statusBadge: statusBadge || null, statusBadgeClass: statusBadgeClass || '',
-        stale: stale || false,
+        stale: stale || false, reason: reason || null,
       };
     },
 
-    preciseEntry(type, source, effectiveAt, principal, interest, principalBalance, interestBalance, statusBadge, statusBadgeClass) {
+    preciseEntry(type, source, effectiveAt, principal, interest, principalBalance, interestBalance, statusBadge, statusBadgeClass, reason) {
       return {
         id: ++this.preciseIdCounter, entryType: type, sourceActivity: source,
         effectiveAt, principal, interest,
         principalBalance, interestBalance,
         isNew: true, statusBadge: statusBadge || null, statusBadgeClass: statusBadgeClass || '',
+        reason: reason || null,
       };
     },
 
@@ -784,20 +795,20 @@ function ledgerDemo() {
 
       lastP = r(lastP + comp8_princ);
       lastI = r(lastI + comp8_int);
-      s8.push(this.preciseEntry('Reversal', 'Reversal-234', '2024-03-05', comp8_princ, comp8_int, lastP, lastI, 'COMPENSATED', 'bg-red-500/15 text-red-400 border border-red-500/20'));
+      s8.push(this.preciseEntry('Reversal', 'Reversal-234', '2024-03-05', comp8_princ, comp8_int, lastP, lastI, 'COMPENSATED', 'bg-red-500/15 text-red-400 border border-red-500/20', 'Offsets Payment #234'));
 
       if (Math.abs(adj304_int_final) > 0.001) {
         lastI = r(lastI + adj304_int_final);
-        s8.push(this.preciseEntry('Adjustment', 'SOD-20240304', '2024-03-05', 0, adj304_int_final, lastP, lastI, 'RECALCULATED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20'));
+        s8.push(this.preciseEntry('Adjustment', 'SOD-20240304', '2024-03-05', 0, adj304_int_final, lastP, lastI, 'RECALCULATED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20', 'Int $271.38\u2192$273.03 \u2014 principal restored to $1M'));
       }
       if (Math.abs(adj305_int_final) > 0.001) {
         lastI = r(lastI + adj305_int_final);
-        s8.push(this.preciseEntry('Adjustment', 'SOD-20240305', '2024-03-05', 0, adj305_int_final, lastP, lastI, 'RECALCULATED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20'));
+        s8.push(this.preciseEntry('Adjustment', 'SOD-20240305', '2024-03-05', 0, adj305_int_final, lastP, lastI, 'RECALCULATED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20', 'Int $271.38\u2192$273.03 \u2014 principal restored to $1M'));
       }
       if (Math.abs(adj456_p) > 0.001 || Math.abs(adj456_i) > 0.001) {
         lastP = r(lastP + adj456_p);
         lastI = r(lastI + adj456_i);
-        s8.push(this.preciseEntry('Adjustment', 'Transaction-456', '2024-03-05', adj456_p, adj456_i, lastP, lastI, 'RECALCULATED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20'));
+        s8.push(this.preciseEntry('Adjustment', 'Transaction-456', '2024-03-05', adj456_p, adj456_i, lastP, lastI, 'RECALCULATED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20', 'Re-allocated: int $542.76\u2192$546.06'));
       }
 
       // Step 9: Backdated payment
@@ -806,7 +817,7 @@ function ledgerDemo() {
       lastP = r(lastP + pay9_p);
       lastI = r(lastI + pay9_i);
       const s9 = [...s8,
-        this.preciseEntry('Payment', 'Transaction-768', '2024-03-03', pay9_p, pay9_i, lastP, lastI, 'RETROACTIVE', 'bg-purple-500/15 text-purple-400 border border-purple-500/20'),
+        this.preciseEntry('Payment', 'Transaction-768', '2024-03-03', pay9_p, pay9_i, lastP, lastI, 'RETROACTIVE', 'bg-purple-500/15 text-purple-400 border border-purple-500/20', 'Inserted at economic date Mar-03'),
       ];
 
       this.preciseSnapshots = [s1, s2, s3, s4, s5, s6, s7, s8, s9];
@@ -854,35 +865,37 @@ function ledgerDemo() {
         this.naiveEntry('Payment', 'Transaction-456', '2024-03-05', princ7, int7, r(p5 + princ7), 0),
       ];
 
-      // Step 8: Reversal — naive only compensates the original payment.
-      // It reverses the principal and interest impact of payment 234.
-      // But does NOT adjust downstream SODs or payment 456.
+      // Step 8: Reversal — a competent conventional engine compensates AND
+      // adds a grouped downstream adjustment to correct balances.
+      // But the correction merges SOD-304, SOD-305, and Payment-456 deltas
+      // into a single opaque entry — causal decomposition is lost.
       const comp_princ = -princ4;   // +9452.05
       const comp_int = int4;         // +547.95
       let nLastP = r(s7[s7.length-1].principalBalance + comp_princ);
       let nLastI = r(s7[s7.length-1].interestBalance + comp_int);
 
-      // Mark downstream rows as stale
-      const s8 = s7.map((e, i) => {
-        // SOD-304 (index 4), SOD-305 (index 5), Payment-456 (index 6) become stale
-        if (i >= 4 && i <= 6) {
-          return { ...e, stale: true, statusBadge: 'NOT REPLAYED', statusBadgeClass: 'bg-red-500/10 text-red-400/70 border border-red-500/15' };
-        }
-        return { ...e };
-      });
-      s8.push(this.naiveEntry('Reversal', 'Reversal-234', '2024-03-05', comp_princ, comp_int, nLastP, nLastI, 'COMPENSATED ONLY', 'bg-red-500/15 text-red-400 border border-red-500/20'));
+      // Rows 1-7 stay frozen — the grouped adjustment corrects net impact
+      const s8 = s7.map(e => ({ ...e }));
+      s8.push(this.naiveEntry('Reversal', 'Reversal-234', '2024-03-05', comp_princ, comp_int, nLastP, nLastI, 'COMPENSATED', 'bg-red-500/15 text-red-400 border border-red-500/20', false, 'Offsets Payment #234'));
 
-      // Step 9: Backdated payment — naive appends at end without replay.
-      // It applies payment on current balances (post-reversal).
-      // Interest balance is 547.95, so payment of 4000:
-      //   interest portion: -547.95, principal portion: -(4000 - 547.95) = -3452.05
+      // Grouped downstream adjustment:
+      //   SOD-304 Δint: +1.65, SOD-305 Δint: +1.65, Trans-456: Δprinc +3.30, Δint -3.30
+      //   NET: +3.30 principal, 0.00 interest — merged into one opaque row
+      const groupedPrinc = 3.30;
+      const groupedInt = 0;
+      nLastP = r(nLastP + groupedPrinc);
+      nLastI = r(nLastI + groupedInt);
+      s8.push(this.naiveEntry('Adjustment', 'Reversal Impact', '2024-03-05', groupedPrinc, groupedInt, nLastP, nLastI, 'GROUPED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20', false, 'Lumped correction — entries not decomposed'));
+
+      // Step 9: Backdated payment — applied against current processing-time balances.
+      // Interest balance is 547.95 (vs precise's 547.94 at economic date). $0.01 rounding drift.
       const naivePay9_int = -nLastI;  // -547.95
       const naivePay9_princ = r(-(4000 - nLastI));  // -3452.05
       nLastP = r(nLastP + naivePay9_princ);
       nLastI = r(nLastI + naivePay9_int);
 
       const s9 = s8.map(e => ({ ...e }));
-      s9.push(this.naiveEntry('Payment', 'Transaction-768', '2024-03-03', naivePay9_princ, naivePay9_int, nLastP, nLastI, 'ECONOMICALLY MISORDERED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20'));
+      s9.push(this.naiveEntry('Payment', 'Transaction-768', '2024-03-03', naivePay9_princ, naivePay9_int, nLastP, nLastI, 'APPENDED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20', false, 'Applied at processing-time balances'));
 
       this.naiveSnapshots = [s1, s2, s3, s4, s5, s6, s7, s8, s9];
     },
@@ -897,12 +910,12 @@ function ledgerDemo() {
       if (act.causesReplay) {
         if (act.activityType === 'Reversal') {
           this.engineIcon = '⟲';
-          this.engineMsg = 'Compensation → Rollback → Replay → Diff → Append adjustments';
-          this.naiveEngineMsg = 'Local compensation only. No downstream replay.';
+          this.engineMsg = 'Compensation → Recalculate each downstream entry → Append individual adjustments';
+          this.naiveEngineMsg = 'Compensation + grouped downstream adjustment.';
         } else {
           this.engineIcon = '⏪';
-          this.engineMsg = 'Rollback to 2024-03-03 → Insert → Replay → Diff → Append';
-          this.naiveEngineMsg = 'Payment appended. Downstream entries unchanged.';
+          this.engineMsg = 'Insert at economic date → Replay downstream → Trace each correction';
+          this.naiveEngineMsg = 'Payment appended at processing-time balances.';
         }
         this.engineActive = true;
         await this.sleep(2000);
@@ -916,9 +929,9 @@ function ledgerDemo() {
 
       // Update engine statuses
       if (this.currentStep >= 7) {
-        this.engines.naive.status = 'Economically stale — downstream derived entries not recomputed.';
+        this.engines.naive.status = 'Balances correct — but grouped adjustment cannot be decomposed per entry.';
         this.engines.naive.warnings = this.getNaiveWarnings();
-        this.engines.precise.status = 'Replay complete — all downstream entries recalculated.';
+        this.engines.precise.status = 'Every downstream correction individually traced to its source entry.';
       } else {
         this.engines.naive.status = '';
         this.engines.naive.warnings = [];
@@ -994,17 +1007,17 @@ function ledgerDemo() {
 
     openReversalExplainer() {
       this.explainerTitle = 'Step 8 — Reversal of Payment #234';
-      this.explainerNaive = 'Added a single compensation entry reversing the original $10,000 payment impact (+$9,452.05 principal, +$547.95 interest). <strong>No downstream recalculation.</strong> SOD accruals on 03-04 and 03-05 still reflect the lower principal ($990,547.95). Payment #456 still allocated against the stale interest balance. The ledger is internally consistent as appended, but economically stale.';
-      this.explainerPrecise = 'Added the same compensation entry, then <strong>rolled back and replayed</strong> all downstream derived entries. SOD accruals on 03-04 and 03-05 were recalculated on the corrected $1,000,000 principal. Payment #456 was re-allocated against the updated interest balance. Three adjustment entries record the exact deltas — each traceable to its source activity.';
-      this.explainerWhy = 'The conventional ledger now carries <strong>stale SOD accruals</strong> computed on $990,547.95 instead of $1,000,000. Payment #456 allocated $542.76 to interest instead of the correct $546.06. These errors compound silently. A collector, biller, or auditor sees a plausible ledger — but the interest balance is no longer economically grounded. Support must explain local compensations instead of true causality.';
+      this.explainerNaive = 'Added a compensation entry reversing Payment #234, then computed a <strong>grouped downstream adjustment</strong> (+$3.30 principal, $0.00 interest). Balances are now correct. But the grouped adjustment merges three distinct corrections — SOD-304, SOD-305, and Payment #456 — into <strong>a single opaque row</strong>. Reading this ledger, you cannot tell which original entry each dollar of the +$3.30 addresses.';
+      this.explainerPrecise = 'Added the same compensation entry, then independently recalculated each downstream entry. <strong>Three separate adjustment rows</strong> were appended — one for SOD-304 (+$1.65 interest), one for SOD-305 (+$1.65 interest), one for Payment #456 (+$3.30 principal, &minus;$3.30 interest). Each row names the entry it corrects and shows the exact delta.';
+      this.explainerWhy = 'Both engines arrive at <strong>identical balances</strong> after this step. The difference is readability. An auditor sees the conventional ledger\'s &ldquo;Reversal Impact: +$3.30&rdquo; and must reconstruct which entries it covers. PreciseLedgerPro\'s audit trail reads top-to-bottom — every correction is self-explanatory. This matters most when a <strong>subsequent retroactive event</strong> requires adjusting-against-the-adjustment.';
       this.showExplainer = true;
     },
 
     openBackdatedExplainer() {
       this.explainerTitle = 'Step 9 — Backdated Payment #768 ($4,000)';
-      this.explainerNaive = 'Appended the $4,000 payment at the end of the ledger. The effective date shows March 3, but the payment was applied against post-reversal balances (March 5). <strong>Downstream SOD accruals and payment #456 remain unchanged.</strong> The ledger chronology and economics have permanently diverged.';
-      this.explainerPrecise = 'Rolled the ledger back to March 3, inserted the payment at its true economic date, then replayed all subsequent activities on the corrected balances. The $4,000 reduction on a ~$1M principal changes daily interest by less than a cent once rounded — so replayed SOD accruals produce identical values. <strong>Zero-delta adjustments were skipped.</strong> Only real differences get recorded. This is "append-only" without being "dumb append."';
-      this.explainerWhy = 'The conventional ledger now shows a payment with an effective date of March 3 that was actually applied against March 5 balances. <strong>The economic ordering and the ledger ordering have permanently diverged.</strong> Any future replay, audit, or reconciliation must manually account for this discrepancy. PreciseLedgerPro maintains a single coherent timeline — the ledger <em>is</em> the authoritative economic record, not a lossy approximation of it.';
+      this.explainerNaive = 'Appended the $4,000 payment against current processing-time balances (interest: $547.95). This differs by $0.01 from the economic-date interest of $547.94. <strong>The previous grouped adjustment cannot be decomposed</strong> — if another backdated event arrives, the implementer must reason about adjustments-to-adjustments without a causal trail.';
+      this.explainerPrecise = 'Inserted the payment at its true economic date (Mar 03), replayed downstream. The $4,000 on a ~$1M principal changes daily interest by less than $0.01 once rounded — so downstream SODs produce identical values. <strong>Zero-delta adjustments were skipped.</strong> The ledger grows only when a correction has real impact. Each prior adjustment remains individually addressable for future re-derivation.';
+      this.explainerWhy = 'The $0.01 numerical drift is trivial. The real cost is architectural: the conventional ledger is now <strong>one retroactive event away from needing to adjust-against-the-adjustment</strong> — and with grouped entries, that decomposition is impossible without re-deriving the entire downstream chain from scratch. PreciseLedgerPro\'s individually traced adjustments make re-derivation automatic.';
       this.showExplainer = true;
     },
 
@@ -1034,8 +1047,8 @@ function ledgerDemo() {
 
     getNaiveScore() {
       if (this.currentStep <= 7) return 100;
-      if (this.currentStep === 8) return 70;
-      return 55;
+      if (this.currentStep === 8) return 97;
+      return 95;
     },
 
     getPreciseScore() { return 100; },
@@ -1051,11 +1064,11 @@ function ledgerDemo() {
     getNaiveWarnings() {
       const w = [];
       if (this.currentStep >= 8) {
-        w.push('SOD-20240304 and SOD-20240305 accrued on stale principal ($990,547.95 instead of $1,000,000).');
-        w.push('Payment #456 allocated against stale interest balance.');
+        w.push('Grouped adjustment merges SOD-304, SOD-305, and Payment #456 corrections into one opaque entry. Per-entry audit trail lost.');
       }
       if (this.currentStep >= 9) {
-        w.push('Backdated payment #768 applied against current-state balances, not economic-date balances.');
+        w.push('Payment #768 applied against processing-time interest ($547.95) instead of economic-date interest ($547.94). $0.01 allocation drift.');
+        w.push('A subsequent retroactive event would require decomposing the grouped adjustment — which is not possible from the ledger alone.');
       }
       return w;
     },
@@ -1064,66 +1077,42 @@ function ledgerDemo() {
       const step = this.currentStep;
       if (step < 8) return [];
 
-      const r = (n) => Math.round(n * 100) / 100;
-      const di = DAILY_INTEREST_1M;
-      const int4 = r(2*di);
-      const princ4 = r(-(10000 - int4));
-      const p5 = r(1000000 + princ4);
-      const dailyInt5 = r(p5 * 0.10 / 365);
-      const intBal7 = r(2*dailyInt5);
-
       const rows = [];
 
-      // Payment #234 — reversed in both
       rows.push({
-        activity: 'Payment #234',
-        naivePrinc: princ4, naiveInt: -int4,
-        precisePrinc: 0, preciseInt: 0,
-        reason: step >= 8 ? 'Reversed. Precise net impact=0 (adjustments cancel).' : '',
-        diverges: step >= 8,
+        correction: 'SOD-304 interest: $271.38 should be $273.03',
+        conventional: '\u26d4 Buried in grouped +$3.30 adjustment',
+        precise: '\u2713 Explicit: Adjustment SOD-304 \u2192 \u0394int +$1.65',
+        traceable: false,
       });
 
-      // SOD 03-04
-      const finalSOD = 273.03;
       rows.push({
-        activity: 'SOD 2024-03-04',
-        naivePrinc: 0, naiveInt: dailyInt5,
-        precisePrinc: 0, preciseInt: finalSOD,
-        reason: step >= 8 ? 'Not replayed vs recalculated on $1M principal.' : '',
-        diverges: step >= 8,
+        correction: 'SOD-305 interest: $271.38 should be $273.03',
+        conventional: '\u26d4 Same grouped entry \u2014 which part is SOD-305?',
+        precise: '\u2713 Explicit: Adjustment SOD-305 \u2192 \u0394int +$1.65',
+        traceable: false,
       });
 
-      // SOD 03-05
       rows.push({
-        activity: 'SOD 2024-03-05',
-        naivePrinc: 0, naiveInt: dailyInt5,
-        precisePrinc: 0, preciseInt: finalSOD,
-        reason: step >= 8 ? 'Not replayed vs recalculated on $1M principal.' : '',
-        diverges: step >= 8,
+        correction: 'Payment #456 re-allocation: int $542.76 \u2192 $546.06',
+        conventional: '\u26d4 Same grouped entry \u2014 net princ/int unknown per entry',
+        precise: '\u2713 Explicit: Adjustment #456 \u2192 \u0394princ +$3.30, \u0394int \u2212$3.30',
+        traceable: false,
       });
 
-      // Payment #456
-      const princ7 = r(-(5000 - intBal7));
-      rows.push({
-        activity: 'Payment #456',
-        naivePrinc: princ7, naiveInt: -intBal7,
-        precisePrinc: -4453.94, preciseInt: -546.06,
-        reason: step >= 8 ? 'Naive allocated on stale interest. Precise re-allocated.' : '',
-        diverges: step >= 8,
-      });
-
-      // Backdated Payment #768
       if (step >= 9) {
-        // Naive: applied against post-reversal current balances
-        const nLastI = int4; // 547.95 after reversal restored it
-        const naivePay9_int = -nLastI;
-        const naivePay9_princ = r(-(4000 - nLastI));
         rows.push({
-          activity: 'Payment #768 (backdated)',
-          naivePrinc: naivePay9_princ, naiveInt: naivePay9_int,
-          precisePrinc: -3452.06, preciseInt: -547.94,
-          reason: 'Naive applied on current balances. Precise applied at economic date.',
-          diverges: true,
+          correction: 'Payment #768 interest basis at economic date',
+          conventional: '\u26a0\ufe0f Applied at $547.95 (processing-time)',
+          precise: '\u2713 Applied at $547.94 (economic date Mar-03)',
+          traceable: false,
+        });
+
+        rows.push({
+          correction: 'If another backdated event arrives\u2026',
+          conventional: '\u26d4 Must adjust-against-the-adjustment \u2014 grouped entries cannot be decomposed',
+          precise: '\u2713 Each adjustment independently addressable \u2014 clean re-derivation',
+          traceable: false,
         });
       }
 
