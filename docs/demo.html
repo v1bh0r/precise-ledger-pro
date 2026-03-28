@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Live Demo — Precise Ledger Pro</title>
-  <meta name="description" content="Interactive simulation of the Precise Ledger Pro rollback-replay-sync engine handling reversals and backdated payments." />
+  <title>Comparative Demo — Precise Ledger Pro</title>
+  <meta name="description" content="Side-by-side comparison: a conventional ledger vs PreciseLedgerPro processing the same loan events including reversals and backdated payments." />
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -25,202 +25,334 @@
   <style>
     body { background: #0a0f1e; color: #e2e8f0; }
     .mono { font-family: 'JetBrains Mono', monospace; }
-    .card {
-      background: #0d1526; border: 1px solid rgba(56,189,248,0.1);
-      border-radius: 12px;
-    }
-    .badge { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.04em; }
-    .gradient-text {
-      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; font-weight: 600;
-      padding: 10px 22px; border-radius: 8px; display: inline-block;
-      transition: opacity 0.15s, transform 0.15s; cursor: pointer; border: none;
-    }
+    .card { background: #0d1526; border: 1px solid rgba(56,189,248,0.1); border-radius: 12px; }
+    .card-naive { background: #0d1526; border: 1px solid rgba(251,191,36,0.12); border-radius: 12px; }
+    .card-precise { background: #0d1526; border: 1px solid rgba(56,189,248,0.12); border-radius: 12px; }
+    .badge { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.04em; }
+    .gradient-text { background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .btn-primary { background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; font-weight: 600; padding: 9px 20px; border-radius: 8px; display: inline-block; transition: opacity 0.15s, transform 0.15s; cursor: pointer; border: none; font-size: 0.8rem; }
     .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-    .btn-outline {
-      border: 1px solid rgba(56,189,248,0.35); color: #38bdf8; font-weight: 500;
-      padding: 9px 22px; border-radius: 8px; display: inline-block;
-      transition: all 0.15s; cursor: pointer; background: transparent;
-    }
+    .btn-outline { border: 1px solid rgba(56,189,248,0.35); color: #38bdf8; font-weight: 500; padding: 8px 18px; border-radius: 8px; display: inline-block; transition: all 0.15s; cursor: pointer; background: transparent; font-size: 0.8rem; }
     .btn-outline:hover { border-color: #38bdf8; background: rgba(56,189,248,0.06); }
-    .section-label { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: #38bdf8; }
+    .btn-sm { padding: 5px 12px; font-size: 0.7rem; }
+    .section-label { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.15em; text-transform: uppercase; color: #38bdf8; }
+    .section-label-amber { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.15em; text-transform: uppercase; color: #fbbf24; }
 
-    /* Table */
-    .ledger-table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
-    .ledger-table th { padding: 10px 8px; text-align: right; color: #64748b; font-weight: 500; border-bottom: 1px solid rgba(56,189,248,0.1); white-space: nowrap; }
+    .ledger-table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; }
+    .ledger-table th { padding: 7px 5px; text-align: right; color: #64748b; font-weight: 500; border-bottom: 1px solid rgba(56,189,248,0.08); white-space: nowrap; font-size: 0.6rem; }
     .ledger-table th:first-child, .ledger-table th:nth-child(2), .ledger-table th:nth-child(3) { text-align: left; }
-    .ledger-table td { padding: 8px 8px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.03); white-space: nowrap; }
+    .ledger-table td { padding: 5px 5px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.025); white-space: nowrap; }
     .ledger-table td:first-child, .ledger-table td:nth-child(2), .ledger-table td:nth-child(3) { text-align: left; }
     .ledger-table tr { transition: background 0.3s; }
     .ledger-table tr.new-row { animation: fadeIn 0.4s ease-out; }
     .ledger-table tr.adjustment-row td { color: #fbbf24; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .ledger-table tr.stale-row td { opacity: 0.6; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Activity cards */
     .activity-card { transition: all 0.2s; position: relative; }
     .activity-card.applied { opacity: 0.5; }
-    .activity-card.current { border-color: rgba(56,189,248,0.5) !important; box-shadow: 0 0 16px rgba(56,189,248,0.1); }
+    .activity-card.current { border-color: rgba(56,189,248,0.5) !important; box-shadow: 0 0 12px rgba(56,189,248,0.08); }
     .activity-card.pending { opacity: 0.85; }
 
-    /* Engine animation */
-    .engine-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(10,15,30,0.6); backdrop-filter: blur(3px);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-    }
+    .engine-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10,15,30,0.6); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 100; }
     .pulse { animation: pulse 1.2s ease-in-out infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
     .positive { color: #4ade80; }
     .negative { color: #f87171; }
     .zero { color: #475569; }
+    .drift-alert { color: #f87171; font-weight: 600; }
+
+    .score-bar { height: 6px; border-radius: 3px; background: #1e293b; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease-out; }
+
+    .explainer-drawer { max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out, opacity 0.3s; opacity: 0; }
+    .explainer-drawer.open { max-height: 800px; opacity: 1; }
+
+    .pipeline-step { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 0.6rem; font-family: 'JetBrains Mono', monospace; }
+    .pipeline-arrow { color: #475569; font-size: 0.6rem; }
   </style>
 </head>
 <body class="antialiased" x-data="ledgerDemo()" x-init="init()">
 
   <!-- NAV -->
   <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5" style="background:rgba(10,15,30,0.92);backdrop-filter:blur(12px);">
-    <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+    <div class="max-w-[1600px] mx-auto px-6 h-14 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <a href="index.html" class="text-slate-400 hover:text-brand-400 transition-colors text-sm">&larr; Back to Home</a>
         <span class="text-white/10">|</span>
         <span class="mono text-brand-400 font-bold tracking-tight text-sm">PreciseLedger<span class="text-white">Pro</span></span>
-        <span class="badge bg-brand-500/20 text-brand-400 border border-brand-500/25">DEMO</span>
+        <span class="badge bg-brand-500/20 text-brand-400 border border-brand-500/25">COMPARATIVE DEMO</span>
       </div>
     </div>
   </nav>
 
-  <!-- ENGINE OVERLAY -->
+  <!-- ENGINE OVERLAY (Precise engine only) -->
   <template x-if="engineActive">
     <div class="engine-overlay" @click.self="engineActive = false">
-      <div class="card p-8 text-center max-w-md">
-        <div class="pulse text-4xl mb-4" x-text="engineIcon"></div>
-        <h3 class="font-bold text-lg mb-2" x-text="engineTitle"></h3>
-        <p class="text-slate-400 text-sm mono" x-text="engineMsg"></p>
+      <div class="flex gap-6 max-w-3xl w-full px-4">
+        <!-- Naive side -->
+        <div class="card-naive p-6 text-center flex-1">
+          <div class="text-2xl mb-3 opacity-60">&#8212;</div>
+          <h3 class="font-semibold text-sm mb-1 text-amber-400">Conventional Ledger</h3>
+          <p class="text-slate-500 text-xs mono" x-text="naiveEngineMsg"></p>
+        </div>
+        <!-- Precise side -->
+        <div class="card-precise p-6 text-center flex-1">
+          <div class="pulse text-2xl mb-3" x-text="engineIcon"></div>
+          <h3 class="font-semibold text-sm mb-1 text-brand-400">PreciseLedgerPro</h3>
+          <p class="text-slate-400 text-xs mono" x-text="engineMsg"></p>
+          <div class="flex items-center justify-center gap-1 mt-3">
+            <span class="pipeline-step bg-brand-500/15 text-brand-400">Rollback</span>
+            <span class="pipeline-arrow">&rarr;</span>
+            <span class="pipeline-step bg-brand-500/15 text-brand-400">Re-evaluate</span>
+            <span class="pipeline-arrow">&rarr;</span>
+            <span class="pipeline-step bg-brand-500/15 text-brand-400">Replay</span>
+            <span class="pipeline-arrow">&rarr;</span>
+            <span class="pipeline-step bg-brand-500/15 text-brand-400">Diff</span>
+            <span class="pipeline-arrow">&rarr;</span>
+            <span class="pipeline-step bg-brand-500/15 text-brand-400">Append</span>
+          </div>
+        </div>
       </div>
     </div>
   </template>
 
   <!-- MAIN CONTENT -->
-  <div class="pt-20 pb-12 px-4 max-w-7xl mx-auto">
+  <div class="pt-20 pb-8 px-4 max-w-[1600px] mx-auto">
 
-    <!-- Header -->
-    <div class="text-center mb-10">
-      <h1 class="text-3xl font-bold mb-3">Live Ledger <span class="gradient-text">Simulation</span></h1>
-      <p class="text-slate-400 max-w-2xl mx-auto text-sm leading-relaxed">
-        A $1,000,000 disbursement, daily interest accrual at 10% APR, two payments, a <span class="text-red-400 font-medium">reversal</span>,
-        and a <span class="text-amber-400 font-medium">backdated payment</span>.
-        Watch how the engine handles each one &mdash; step by step.
-      </p>
+    <!-- ===== TOP STRIP: Header + Controls + KPIs ===== -->
+    <div class="mb-6">
+      <div class="text-center mb-5">
+        <h1 class="text-2xl font-bold mb-2">Same Events. <span class="gradient-text">Different Truth.</span></h1>
+        <p class="text-slate-400 max-w-3xl mx-auto text-sm leading-relaxed">
+          A $1,000,000 loan processes 9 identical events through two ledger architectures.
+          Watch how a <span class="text-amber-400 font-medium">conventional ledger</span> and
+          <span class="text-brand-400 font-medium">PreciseLedgerPro</span> diverge when facing
+          a <span class="text-red-400">reversal</span> and a <span class="text-amber-400">backdated payment</span>.
+        </p>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex flex-wrap items-center justify-center gap-3 mb-5">
+        <button class="btn-primary" @click="applyNext()" :disabled="currentStep >= activities.length || engineActive">
+          <span x-text="currentStep >= activities.length ? 'All Applied' : 'Apply Next'"></span>
+          <span class="ml-1 opacity-60" x-show="currentStep < activities.length" x-text="'(' + (currentStep+1) + '/' + activities.length + ')'"></span>
+        </button>
+        <button class="btn-outline btn-sm" @click="applyAll()" :disabled="currentStep >= activities.length || engineActive" x-show="currentStep < activities.length">Apply All</button>
+        <button class="btn-outline btn-sm !border-slate-600 !text-slate-400" @click="jumpTo(7)" :disabled="engineActive" x-show="currentStep < 8">Jump to Reversal</button>
+        <button class="btn-outline btn-sm !border-slate-600 !text-slate-400" @click="jumpTo(8)" :disabled="engineActive" x-show="currentStep < 9 && currentStep >= 8">Jump to Backdated</button>
+        <button class="btn-outline btn-sm !border-red-500/30 !text-red-400 hover:!bg-red-500/5" @click="reset()" x-show="currentStep > 0">Reset</button>
+      </div>
+
+      <!-- KPI Comparison Strip -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3" x-show="currentStep > 0">
+        <div class="card p-3 text-center">
+          <div class="text-[0.6rem] text-slate-500 mono mb-1">CURRENT ACTIVITY</div>
+          <div class="text-xs font-medium" x-text="currentStep > 0 ? activities[currentStep-1].commonName : '—'"></div>
+        </div>
+        <div class="card p-3 text-center">
+          <div class="text-[0.6rem] text-slate-500 mono mb-1">BALANCE DIVERGENCE</div>
+          <div class="text-xs font-medium" :class="hasDivergence() ? 'drift-alert' : 'text-green-400'" x-text="hasDivergence() ? getDivergenceSummary() : 'None'"></div>
+        </div>
+        <div class="card p-3 text-center">
+          <div class="text-[0.6rem] text-slate-500 mono mb-1">ECONOMIC CORRECTNESS</div>
+          <div class="text-xs font-medium">
+            <span class="text-amber-400" x-text="getNaiveScore() + '%'"></span>
+            <span class="text-slate-600 mx-1">vs</span>
+            <span class="text-brand-400" x-text="getPreciseScore() + '%'"></span>
+          </div>
+        </div>
+        <div class="card p-3 text-center">
+          <div class="text-[0.6rem] text-slate-500 mono mb-1">DOWNSTREAM CORRECTIONS</div>
+          <div class="text-xs font-medium">
+            <span class="text-amber-400" x-text="countNaiveAdjustments()"></span>
+            <span class="text-slate-600 mx-1">vs</span>
+            <span class="text-brand-400" x-text="countPreciseAdjustments()"></span>
+          </div>
+        </div>
+        <div class="card p-3 text-center">
+          <div class="text-[0.6rem] text-slate-500 mono mb-1">REPLAY INTEGRITY</div>
+          <div class="text-xs font-medium">
+            <span class="text-amber-400">No</span>
+            <span class="text-slate-600 mx-1">vs</span>
+            <span class="text-brand-400">Yes</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Controls -->
-    <div class="flex items-center justify-center gap-4 mb-8">
-      <button class="btn-primary text-sm" @click="applyNext()" :disabled="currentStep >= activities.length || engineActive">
-        <span x-text="currentStep >= activities.length ? 'All Applied' : 'Apply Next Activity'"></span>
-        <span class="ml-1 opacity-60" x-show="currentStep < activities.length" x-text="'(' + (currentStep+1) + '/' + activities.length + ')'"></span>
-      </button>
-      <button class="btn-outline text-sm" @click="applyAll()" :disabled="currentStep >= activities.length || engineActive" x-show="currentStep < activities.length">Apply All</button>
-      <button class="btn-outline text-sm !border-red-500/30 !text-red-400 hover:!bg-red-500/5" @click="reset()" x-show="currentStep > 0">Reset</button>
-    </div>
-
-    <!-- Two-column layout -->
-    <div class="grid lg:grid-cols-12 gap-6">
-
-      <!-- LEFT: Activities -->
-      <div class="lg:col-span-4 space-y-3">
-        <h3 class="section-label mb-3">// activities</h3>
+    <!-- ===== SHARED ACTIVITY STREAM ===== -->
+    <div class="mb-6">
+      <h3 class="section-label mb-2">// shared activity stream</h3>
+      <div class="flex flex-wrap gap-2">
         <template x-for="(act, i) in activities" :key="i">
-          <div class="card p-4 activity-card"
-               :class="{
-                 'applied': i < currentStep,
-                 'current': i === currentStep,
-                 'pending': i > currentStep
-               }">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="badge"
-                    :class="{
-                      'bg-blue-500/20 text-blue-400 border border-blue-500/25': act.activityType === 'Transaction' && act.direction === 'CREDIT',
-                      'bg-green-500/20 text-green-400 border border-green-500/25': act.activityType === 'Transaction' && act.direction === 'DEBIT',
-                      'bg-purple-500/20 text-purple-400 border border-purple-500/25': act.activityType === 'StartOfDay',
-                      'bg-red-500/20 text-red-400 border border-red-500/25': act.activityType === 'Reversal',
-                    }"
-                    x-text="act.activityType === 'StartOfDay' ? 'SOD' : act.activityType"></span>
-              <span class="text-xs text-white font-medium" x-text="act.commonName"></span>
-              <template x-if="act.isBackdated">
-                <span class="badge bg-amber-500/20 text-amber-400 border border-amber-500/25">BACKDATED</span>
-              </template>
-              <template x-if="i < currentStep">
-                <span class="ml-auto text-green-400 text-xs">&#10003;</span>
-              </template>
-            </div>
-            <div class="flex items-center gap-4 text-xs text-slate-500 mono">
-              <template x-if="act.amount > 0">
-                <span :class="act.direction === 'CREDIT' ? 'text-blue-400' : 'text-green-400'"
-                      x-text="'$' + formatNum(act.amount)"></span>
-              </template>
-              <span x-text="'eff: ' + act.effectiveAt.substring(5)"></span>
-              <template x-if="act.isBackdated">
-                <span class="text-amber-400" x-text="'txn: ' + act.transactionTime.substring(5)"></span>
-              </template>
-            </div>
+          <div class="card px-3 py-2 activity-card text-[0.65rem] mono flex items-center gap-2 cursor-default"
+               :class="{ 'applied': i < currentStep, 'current': i === currentStep, 'pending': i > currentStep }">
+            <span class="badge text-[0.55rem]"
+                  :class="{
+                    'bg-blue-500/20 text-blue-400 border border-blue-500/25': act.activityType === 'Transaction' && act.direction === 'CREDIT',
+                    'bg-green-500/20 text-green-400 border border-green-500/25': act.activityType === 'Transaction' && act.direction === 'DEBIT',
+                    'bg-purple-500/20 text-purple-400 border border-purple-500/25': act.activityType === 'StartOfDay',
+                    'bg-red-500/20 text-red-400 border border-red-500/25': act.activityType === 'Reversal',
+                  }"
+                  x-text="act.activityType === 'StartOfDay' ? 'SOD' : (act.activityType === 'Reversal' ? 'REV' : 'TXN')"></span>
+            <span class="text-slate-300" x-text="act.commonName"></span>
+            <template x-if="act.amount > 0">
+              <span class="text-slate-500" x-text="'$' + formatNum(act.amount)"></span>
+            </template>
+            <template x-if="act.isBackdated">
+              <span class="badge bg-amber-500/20 text-amber-400 border border-amber-500/25 text-[0.5rem]">BACKDATED</span>
+            </template>
+            <template x-if="i < currentStep">
+              <span class="text-green-400 text-[0.6rem]">&#10003;</span>
+            </template>
           </div>
         </template>
       </div>
+    </div>
 
-      <!-- RIGHT: Ledger table + balance -->
-      <div class="lg:col-span-8">
-        <h3 class="section-label mb-3">// ledger_entries</h3>
+    <!-- ===== SIDE-BY-SIDE LEDGER PANES ===== -->
+    <div class="grid lg:grid-cols-2 gap-5 mb-6">
 
-        <!-- Balance summary -->
-        <div class="grid grid-cols-4 gap-3 mb-4">
-          <div class="card p-3 text-center">
-            <div class="text-xs text-slate-500 mb-1 mono">Principal</div>
-            <div class="font-bold mono text-sm" x-text="'$' + formatNum(balances.principal)"></div>
+      <!-- LEFT PANE: Conventional Ledger -->
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <h3 class="section-label-amber">// conventional ledger</h3>
+          <span class="badge bg-amber-500/15 text-amber-400 border border-amber-500/20">Append-only, no replay</span>
+        </div>
+
+        <!-- Naive Balances -->
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div class="card-naive p-2 text-center">
+            <div class="text-[0.55rem] text-slate-500 mono">Principal</div>
+            <div class="font-bold mono text-xs" x-text="'$' + formatNum(engines.naive.balances.principal)"></div>
+            <template x-if="hasPrincipalDrift()">
+              <div class="text-[0.55rem] drift-alert mono mt-0.5" x-text="'drift: $' + formatNum(getPrincipalDrift())"></div>
+            </template>
           </div>
-          <div class="card p-3 text-center">
-            <div class="text-xs text-slate-500 mb-1 mono">Interest</div>
-            <div class="font-bold mono text-sm" x-text="'$' + formatNum(balances.interest)"></div>
-          </div>
-          <div class="card p-3 text-center">
-            <div class="text-xs text-slate-500 mb-1 mono">Fee</div>
-            <div class="font-bold mono text-sm" x-text="'$' + formatNum(balances.fee)"></div>
-          </div>
-          <div class="card p-3 text-center">
-            <div class="text-xs text-slate-500 mb-1 mono">Excess</div>
-            <div class="font-bold mono text-sm" x-text="'$' + formatNum(balances.excess)"></div>
+          <div class="card-naive p-2 text-center">
+            <div class="text-[0.55rem] text-slate-500 mono">Interest</div>
+            <div class="font-bold mono text-xs" x-text="'$' + formatNum(engines.naive.balances.interest)"></div>
+            <template x-if="hasInterestDrift()">
+              <div class="text-[0.55rem] drift-alert mono mt-0.5" x-text="'drift: $' + formatNum(getInterestDrift())"></div>
+            </template>
           </div>
         </div>
 
-        <!-- Table -->
-        <div class="card overflow-x-auto">
+        <!-- Naive Engine Status -->
+        <template x-if="engines.naive.status">
+          <div class="text-[0.6rem] mono mb-2 px-1" :class="engines.naive.status.includes('stale') ? 'text-amber-400' : 'text-slate-500'" x-text="engines.naive.status"></div>
+        </template>
+
+        <!-- Naive Table -->
+        <div class="card-naive overflow-x-auto" style="max-height:420px;overflow-y:auto;">
           <table class="ledger-table">
             <thead>
               <tr>
                 <th>#</th>
                 <th>Type</th>
                 <th>Activity</th>
-                <th>Effective</th>
-                <th>&Delta; Principal</th>
-                <th>&Delta; Interest</th>
+                <th>&Delta; Princ.</th>
+                <th>&Delta; Int.</th>
                 <th>Princ. Bal.</th>
                 <th>Int. Bal.</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              <template x-if="entries.length === 0">
-                <tr><td colspan="8" class="text-center text-slate-600 py-8">No entries yet. Apply an activity to begin.</td></tr>
+              <template x-if="engines.naive.entries.length === 0">
+                <tr><td colspan="8" class="text-center text-slate-600 py-6">No entries yet.</td></tr>
               </template>
-              <template x-for="(e, i) in entries" :key="e.id">
+              <template x-for="(e, i) in engines.naive.entries" :key="'n'+e.id">
+                <tr :class="{ 'new-row': e.isNew, 'stale-row': e.stale }">
+                  <td class="text-slate-600" x-text="i + 1"></td>
+                  <td>
+                    <span class="badge text-[0.55rem]"
+                          :class="{
+                            'bg-blue-500/15 text-blue-400': e.entryType === 'Disbursal',
+                            'bg-purple-500/15 text-purple-400': e.entryType === 'StartOfDay',
+                            'bg-green-500/15 text-green-400': e.entryType === 'Payment',
+                            'bg-red-500/15 text-red-400': e.entryType === 'Reversal',
+                          }"
+                          x-text="e.entryType"></span>
+                  </td>
+                  <td class="text-slate-500" x-text="e.sourceActivity"></td>
+                  <td :class="deltaClass(e.principal)" x-text="formatDelta(e.principal)"></td>
+                  <td :class="deltaClass(e.interest)" x-text="formatDelta(e.interest)"></td>
+                  <td x-text="'$' + formatNum(e.principalBalance)"></td>
+                  <td x-text="'$' + formatNum(e.interestBalance)"></td>
+                  <td>
+                    <template x-if="e.statusBadge">
+                      <span class="badge text-[0.5rem]" :class="e.statusBadgeClass" x-text="e.statusBadge"></span>
+                    </template>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Naive warnings -->
+        <template x-if="engines.naive.warnings.length > 0 && currentStep > 0">
+          <div class="card-naive p-3 mt-3">
+            <div class="text-[0.6rem] mono text-amber-400 font-semibold mb-1">Warnings</div>
+            <template x-for="w in engines.naive.warnings" :key="w">
+              <p class="text-[0.6rem] text-amber-300/70 mb-1" x-text="w"></p>
+            </template>
+          </div>
+        </template>
+      </div>
+
+      <!-- RIGHT PANE: PreciseLedgerPro -->
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <h3 class="section-label">// PreciseLedgerPro</h3>
+          <span class="badge bg-brand-500/15 text-brand-400 border border-brand-500/20">Rollback &rarr; Replay &rarr; Sync</span>
+        </div>
+
+        <!-- Precise Balances -->
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div class="card-precise p-2 text-center">
+            <div class="text-[0.55rem] text-slate-500 mono">Principal</div>
+            <div class="font-bold mono text-xs" x-text="'$' + formatNum(engines.precise.balances.principal)"></div>
+          </div>
+          <div class="card-precise p-2 text-center">
+            <div class="text-[0.55rem] text-slate-500 mono">Interest</div>
+            <div class="font-bold mono text-xs" x-text="'$' + formatNum(engines.precise.balances.interest)"></div>
+          </div>
+        </div>
+
+        <!-- Precise Engine Status -->
+        <template x-if="engines.precise.status">
+          <div class="text-[0.6rem] mono mb-2 px-1 text-brand-400" x-text="engines.precise.status"></div>
+        </template>
+
+        <!-- Precise Table -->
+        <div class="card-precise overflow-x-auto" style="max-height:420px;overflow-y:auto;">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Type</th>
+                <th>Activity</th>
+                <th>&Delta; Princ.</th>
+                <th>&Delta; Int.</th>
+                <th>Princ. Bal.</th>
+                <th>Int. Bal.</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-if="engines.precise.entries.length === 0">
+                <tr><td colspan="8" class="text-center text-slate-600 py-6">No entries yet.</td></tr>
+              </template>
+              <template x-for="(e, i) in engines.precise.entries" :key="'p'+e.id">
                 <tr :class="{ 'new-row': e.isNew, 'adjustment-row': e.entryType === 'Adjustment' }">
                   <td class="text-slate-600" x-text="i + 1"></td>
                   <td>
-                    <span class="badge text-[0.6rem]"
+                    <span class="badge text-[0.55rem]"
                           :class="{
                             'bg-blue-500/15 text-blue-400': e.entryType === 'Disbursal',
                             'bg-purple-500/15 text-purple-400': e.entryType === 'StartOfDay',
@@ -231,453 +363,774 @@
                           x-text="e.entryType"></span>
                   </td>
                   <td class="text-slate-500" x-text="e.sourceActivity"></td>
-                  <td class="text-slate-500" x-text="e.effectiveAt.substring(5)"></td>
                   <td :class="deltaClass(e.principal)" x-text="formatDelta(e.principal)"></td>
                   <td :class="deltaClass(e.interest)" x-text="formatDelta(e.interest)"></td>
                   <td x-text="'$' + formatNum(e.principalBalance)"></td>
                   <td x-text="'$' + formatNum(e.interestBalance)"></td>
+                  <td>
+                    <template x-if="e.statusBadge">
+                      <span class="badge text-[0.5rem]" :class="e.statusBadgeClass" x-text="e.statusBadge"></span>
+                    </template>
+                  </td>
                 </tr>
               </template>
             </tbody>
           </table>
         </div>
-
-        <!-- Info text after completion -->
-        <template x-if="currentStep >= activities.length && activities.length > 0">
-          <div>
-            <div class="card p-5 mt-4 border-green-500/20">
-              <p class="text-green-400 text-sm font-medium mb-1">&#10003; All 9 activities applied successfully</p>
-              <p class="text-slate-400 text-xs">The ledger handled a reversal (activity 8) and a backdated payment (activity 9) using the retroactive roll-back &rarr; replay &rarr; sync engine. All balances are deterministically correct.</p>
-            </div>
-
-            <div class="card p-5 mt-4 border-brand-500/15">
-              <h4 class="text-sm font-semibold text-white mb-3">What you just observed</h4>
-
-              <p class="text-slate-400 text-xs leading-relaxed mb-3">
-                <span class="text-brand-400 font-medium">Why every adjustment row matters.</span>
-                When a past activity is reversed or a backdated payment arrives, the engine cannot simply edit the old rows&hairsp;&mdash;&hairsp;that would destroy the audit trail.
-                Instead, it appends <span class="text-amber-400">Adjustment</span> entries that record the <em>exact delta</em> between what was originally calculated and what the corrected ledger now requires.
-                Each adjustment is individually signed, timestamped, and traceable back to the activity it corrects, so an auditor can reconstruct both the &ldquo;before&rdquo; and &ldquo;after&rdquo; states of the ledger without any hidden mutations.
-              </p>
-
-              <p class="text-slate-400 text-xs leading-relaxed mb-3">
-                <span class="text-brand-400 font-medium">The backdated payment (activity&nbsp;9).</span>
-                Payment #768 ($4,000) carries an <span class="mono text-slate-300">effectiveAt</span> of March&nbsp;3 but was submitted on March&nbsp;5.
-                The engine rolls the ledger back to March&nbsp;3, inserts the payment at its true economic date, then replays every subsequent activity&hairsp;&mdash;&hairsp;SOD accruals, payments, the earlier reversal&hairsp;&mdash;&hairsp;on the updated balances.
-                Notice that <em>no additional adjustment entries appeared</em> this time: the $4,000 reduction on a ~$1&thinsp;M principal changes the daily interest by less than a cent once rounded, so the replayed SOD accruals and payment&nbsp;#456 produce the same values they already had after the reversal.
-                When deltas are zero the engine simply skips the adjustment&hairsp;&mdash;&hairsp;only real differences get recorded.
-              </p>
-
-              <p class="text-slate-400 text-xs leading-relaxed">
-                <span class="text-brand-400 font-medium">The residual $0.01 in interest.</span>
-                This is the classic &ldquo;penny rounding&rdquo; artifact of financial systems.
-                Each ledger entry rounds to the cent independently (USD HALF_UP).
-                When the retroactive engine replays and diffs, the sum of individually-rounded adjustments can differ by a cent from the rounded accumulated total&hairsp;&mdash;&hairsp;e.g., two daily accruals of <span class="mono text-slate-300">$273.97</span> sum to <span class="mono text-slate-300">$547.94</span>, but the running balance rounded from full precision is <span class="mono text-slate-300">$547.95</span>.
-                That one-cent gap is deterministic, auditable, and consistent across every replay. It is not a bug; it is an inherent property of rounding at entry boundaries.
-              </p>
-            </div>
-          </div>
-        </template>
       </div>
     </div>
+
+    <!-- ===== COMPARISON EXPLAINER DRAWER ===== -->
+    <div class="explainer-drawer mb-6" :class="{ 'open': showExplainer }">
+      <div class="card p-5" x-show="showExplainer">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="text-sm font-semibold text-white" x-text="explainerTitle"></h4>
+          <button class="text-slate-500 hover:text-slate-300 text-xs mono" @click="showExplainer = false">[close]</button>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4 text-xs leading-relaxed">
+          <div>
+            <div class="text-amber-400 font-medium mb-1 text-[0.65rem] mono">CONVENTIONAL LEDGER</div>
+            <p class="text-slate-400" x-html="explainerNaive"></p>
+          </div>
+          <div>
+            <div class="text-brand-400 font-medium mb-1 text-[0.65rem] mono">PRECISELEDGERPRO</div>
+            <p class="text-slate-400" x-html="explainerPrecise"></p>
+          </div>
+        </div>
+        <div class="mt-3 pt-3 border-t border-white/5">
+          <div class="text-[0.65rem] mono text-slate-500 mb-1">WHY THIS MATTERS</div>
+          <p class="text-slate-400 text-xs" x-html="explainerWhy"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== EVENT IMPACT DIFF TABLE ===== -->
+    <template x-if="currentStep >= 8">
+      <div class="mb-6">
+        <h3 class="section-label mb-3">// event impact comparison</h3>
+        <div class="card overflow-x-auto">
+          <table class="ledger-table">
+            <thead>
+              <tr>
+                <th class="!text-left">Activity</th>
+                <th>Naive &Delta; Princ.</th>
+                <th>Naive &Delta; Int.</th>
+                <th>Precise &Delta; Princ.</th>
+                <th>Precise &Delta; Int.</th>
+                <th class="!text-left">Why Different</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="row in getImpactDiffRows()" :key="row.activity">
+                <tr :class="{'text-amber-400': row.diverges}">
+                  <td class="!text-left text-slate-300" x-text="row.activity"></td>
+                  <td :class="deltaClass(row.naivePrinc)" x-text="formatDelta(row.naivePrinc)"></td>
+                  <td :class="deltaClass(row.naiveInt)" x-text="formatDelta(row.naiveInt)"></td>
+                  <td :class="deltaClass(row.precisePrinc)" x-text="formatDelta(row.precisePrinc)"></td>
+                  <td :class="deltaClass(row.preciseInt)" x-text="formatDelta(row.preciseInt)"></td>
+                  <td class="!text-left text-slate-500 text-[0.6rem]" x-text="row.reason"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
+
+    <!-- ===== AUDIT SCORECARD ===== -->
+    <template x-if="currentStep >= 8">
+      <div class="mb-6">
+        <h3 class="section-label mb-3">// audit &amp; trust scorecard</h3>
+        <div class="grid md:grid-cols-2 gap-4">
+          <!-- Naive Scorecard -->
+          <div class="card-naive p-4">
+            <div class="text-[0.65rem] mono text-amber-400 font-semibold mb-3">Conventional Ledger</div>
+            <template x-for="s in naiveScores" :key="s.label">
+              <div class="mb-2">
+                <div class="flex justify-between text-[0.6rem] mono mb-1">
+                  <span class="text-slate-400" x-text="s.label"></span>
+                  <span :class="s.score >= 80 ? 'text-green-400' : s.score >= 50 ? 'text-amber-400' : 'text-red-400'" x-text="s.score + '/100'"></span>
+                </div>
+                <div class="score-bar">
+                  <div class="score-fill" :style="'width:' + s.score + '%;background:' + (s.score >= 80 ? '#4ade80' : s.score >= 50 ? '#fbbf24' : '#f87171')"></div>
+                </div>
+              </div>
+            </template>
+            <div class="mt-3 pt-2 border-t border-amber-500/10">
+              <span class="badge bg-amber-500/15 text-amber-400 border border-amber-500/20">Needs interpretation</span>
+            </div>
+          </div>
+          <!-- Precise Scorecard -->
+          <div class="card-precise p-4">
+            <div class="text-[0.65rem] mono text-brand-400 font-semibold mb-3">PreciseLedgerPro</div>
+            <template x-for="s in preciseScores" :key="s.label">
+              <div class="mb-2">
+                <div class="flex justify-between text-[0.6rem] mono mb-1">
+                  <span class="text-slate-400" x-text="s.label"></span>
+                  <span :class="s.score >= 80 ? 'text-green-400' : s.score >= 50 ? 'text-amber-400' : 'text-red-400'" x-text="s.score + '/100'"></span>
+                </div>
+                <div class="score-bar">
+                  <div class="score-fill" :style="'width:' + s.score + '%;background:' + (s.score >= 80 ? '#4ade80' : s.score >= 50 ? '#fbbf24' : '#f87171')"></div>
+                </div>
+              </div>
+            </template>
+            <div class="mt-3 pt-2 border-t border-brand-500/10">
+              <span class="badge bg-brand-500/15 text-brand-400 border border-brand-500/20">Deterministically grounded</span>
+            </div>
+          </div>
+        </div>
+        <p class="text-[0.6rem] text-slate-600 mono mt-2 text-center">Scores are demo ratings illustrating architectural differences, not mathematical proof.</p>
+      </div>
+    </template>
+
+    <!-- ===== QUALITATIVE SCORECARD TABLE ===== -->
+    <template x-if="currentStep >= 8">
+      <div class="mb-6">
+        <h3 class="section-label mb-3">// capability comparison</h3>
+        <div class="card overflow-x-auto">
+          <table class="ledger-table text-[0.65rem]">
+            <thead>
+              <tr>
+                <th class="!text-left">Capability</th>
+                <th class="!text-center">Conventional</th>
+                <th class="!text-center">PreciseLedgerPro</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="!text-left text-slate-300">Explain final balance from entries?</td>
+                <td class="!text-center text-amber-400">Partial</td>
+                <td class="!text-center text-green-400">Yes</td>
+              </tr>
+              <tr>
+                <td class="!text-left text-slate-300">Reconstruct causal chain?</td>
+                <td class="!text-center text-amber-400">Weak</td>
+                <td class="!text-center text-green-400">Yes</td>
+              </tr>
+              <tr>
+                <td class="!text-left text-slate-300">Handles backdated economic order?</td>
+                <td class="!text-center text-red-400">No</td>
+                <td class="!text-center text-green-400">Yes</td>
+              </tr>
+              <tr>
+                <td class="!text-left text-slate-300">Avoids silent mutation?</td>
+                <td class="!text-center text-amber-400">Maybe</td>
+                <td class="!text-center text-green-400">Yes</td>
+              </tr>
+              <tr>
+                <td class="!text-left text-slate-300">Deterministic replay-safe?</td>
+                <td class="!text-center text-red-400">No</td>
+                <td class="!text-center text-green-400">Yes</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
+
+    <!-- ===== FINAL VERDICT ===== -->
+    <template x-if="currentStep >= activities.length && activities.length > 0">
+      <div class="mb-6">
+        <div class="grid md:grid-cols-2 gap-4 mb-5">
+          <!-- Naive Verdict -->
+          <div class="card-naive p-5">
+            <div class="text-amber-400 text-sm font-semibold mb-2">Conventional Ledger &mdash; Complete</div>
+            <ul class="text-xs text-slate-400 space-y-1.5">
+              <li>&bull; All 9 activities processed. Ledger internally consistent as appended.</li>
+              <li>&bull; Economically stale after retroactive events. SOD accruals and payment allocations downstream of the reversal were not recomputed.</li>
+              <li>&bull; Requires manual reasoning to explain balance integrity. An auditor would need to reconstruct the corrected economic order outside the ledger.</li>
+            </ul>
+          </div>
+          <!-- Precise Verdict -->
+          <div class="card-precise p-5">
+            <div class="text-brand-400 text-sm font-semibold mb-2">PreciseLedgerPro &mdash; Complete</div>
+            <ul class="text-xs text-slate-400 space-y-1.5">
+              <li>&bull; All 9 activities processed. Every downstream correction explicitly auditable.</li>
+              <li>&bull; Economically correct, append-only, replay-safe. Adjustment entries record exact deltas for each affected derived entry.</li>
+              <li>&bull; An auditor can reconstruct both the &ldquo;before&rdquo; and &ldquo;after&rdquo; states of any retroactive change from the ledger alone.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Executive Summary -->
+        <div class="card p-5 border-brand-500/15">
+          <h4 class="text-sm font-semibold text-white mb-3">Executive Summary</h4>
+          <ul class="text-xs text-slate-400 space-y-2">
+            <li><span class="text-white font-medium">Same events. Different truth.</span> Both engines processed identical input. Only one produced an economically correct ledger.</li>
+            <li><span class="text-white font-medium">Conventional posting preserves rows; PreciseLedgerPro preserves causality.</span> The additional adjustment rows in PreciseLedgerPro are not complexity &mdash; they are explicit evidence of downstream corrections that the conventional engine silently omitted.</li>
+            <li><span class="text-white font-medium">Retroactive correctness is not a reporting feature. It is a ledger architecture property.</span> No amount of post-hoc reconciliation can substitute for an engine that maintains causal integrity through reversals and backdated events.</li>
+          </ul>
+        </div>
+      </div>
+    </template>
+
   </div>
 
   <!-- FOOTER -->
-  <footer class="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between text-slate-600 text-xs border-t border-white/5 mt-8">
+  <footer class="max-w-[1600px] mx-auto px-6 py-6 flex items-center contrast-between text-slate-600 text-xs border-t border-white/5 mt-4">
     <span class="mono text-brand-400/40">PreciseLedgerPro</span>
+    <span class="flex-1"></span>
     <a href="index.html" class="hover:text-brand-400 transition-colors">Back to Home &rarr;</a>
   </footer>
 
 <script>
 /**
- * Precise Ledger Pro — Interactive Demo
+ * Precise Ledger Pro — Comparative Demo
  *
- * All ledger data matches the verified test expectations from:
+ * Side-by-side comparison of a conventional ledger vs PreciseLedgerPro
+ * processing the same 9 loan activities.
+ *
+ * Financial data for PreciseLedgerPro matches verified test expectations from:
  *   applyLedgerActivities_test1/apply_ledger_activities_test1_expectation.csv
  *
- * The demo simulates applying 9 activities one-by-one, showing the ledger
- * entries that each activity produces. When a reversal or backdated activity
- * is encountered, the engine overlay animation plays.
+ * The conventional ledger follows these rules:
+ *   1. Apply activities in processing order.
+ *   2. No retroactive downstream recalculation.
+ *   3. Reversal adds local compensation only.
+ *   4. Backdated payment appended at end, does not replay downstream.
+ *   5. Running balances are ledger-local, not economically rederived.
  */
 function ledgerDemo() {
-  // Interest rate: 10% / 365 days ≈ 273.97260419 per day on 1,000,000 principal
   const DAILY_INTEREST_1M = 273.9726041909307;
-  // After first payment of 10,000 (all to interest 547.95 + principal 9452.05 ← but the CSV expectation says
-  // activity 234 has 0 net impact because it gets reversed. Let's trace the FINAL impacts from the CSV:
-  //   123  Transaction  +1,000,000 principal         → Bal: 1,000,000 / 0
-  //   20240302 SOD      +273.97 interest             → Bal: 1,000,000 / 273.97
-  //   20240303 SOD      +273.97 interest             → Bal: 1,000,000 / 547.95
-  //   234  Transaction  0/0/0/0 (reversed later)     → Bal unchanged after all
-  //   20240304 SOD      +273.03 interest             → after adjustments
-  //   20240305 SOD      +273.03 interest             → after adjustments
-  //   456  Transaction  -4453.94 principal / -546.06 interest
-  //   768  Transaction  -3452.06 principal / -547.94 interest
 
   return {
     currentStep: 0,
-    entries: [],
-    entryIdCounter: 0,
     engineActive: false,
     engineIcon: '',
-    engineTitle: '',
     engineMsg: '',
-    balances: { principal: 0, interest: 0, fee: 0, excess: 0 },
+    naiveEngineMsg: '',
+    showExplainer: false,
+    explainerTitle: '',
+    explainerNaive: '',
+    explainerPrecise: '',
+    explainerWhy: '',
+
+    engines: {
+      naive: {
+        entries: [],
+        balances: { principal: 0, interest: 0, fee: 0, excess: 0 },
+        status: '',
+        warnings: [],
+      },
+      precise: {
+        entries: [],
+        balances: { principal: 0, interest: 0, fee: 0, excess: 0 },
+        status: '',
+      },
+    },
+
+    naiveScores: [
+      { label: 'Economic correctness', score: 55 },
+      { label: 'Audit clarity', score: 60 },
+      { label: 'Retroactive safety', score: 20 },
+      { label: 'Determinism after correction', score: 35 },
+    ],
+
+    preciseScores: [
+      { label: 'Economic correctness', score: 100 },
+      { label: 'Audit clarity', score: 95 },
+      { label: 'Retroactive safety', score: 100 },
+      { label: 'Determinism after correction', score: 100 },
+    ],
 
     activities: [
       {
         activityId: '123', commonName: 'Disbursal', activityType: 'Transaction',
         direction: 'CREDIT', spread: 'P', amount: 1000000,
         effectiveAt: '2024-03-01T00:00', transactionTime: '2024-03-01T00:00',
-        isBackdated: false,
+        isBackdated: false, causesReplay: false, causesNaiveDrift: false,
       },
       {
         activityId: '20240302', commonName: 'SOD — Interest Accrual', activityType: 'StartOfDay',
         direction: '', spread: '', amount: 0,
         effectiveAt: '2024-03-02T00:00', transactionTime: '2024-03-02T00:00',
-        isBackdated: false,
+        isBackdated: false, causesReplay: false, causesNaiveDrift: false,
       },
       {
         activityId: '20240303', commonName: 'SOD — Interest Accrual', activityType: 'StartOfDay',
         direction: '', spread: '', amount: 0,
         effectiveAt: '2024-03-03T00:00', transactionTime: '2024-03-03T00:00',
-        isBackdated: false,
+        isBackdated: false, causesReplay: false, causesNaiveDrift: false,
       },
       {
-        activityId: '234', commonName: 'Payment', activityType: 'Transaction',
+        activityId: '234', commonName: 'Payment #234', activityType: 'Transaction',
         direction: 'DEBIT', spread: 'IPF', amount: 10000,
         effectiveAt: '2024-03-03T13:00', transactionTime: '2024-03-03T13:00',
-        isBackdated: false,
+        isBackdated: false, causesReplay: false, causesNaiveDrift: false,
       },
       {
         activityId: '20240304', commonName: 'SOD — Interest Accrual', activityType: 'StartOfDay',
         direction: '', spread: '', amount: 0,
         effectiveAt: '2024-03-04T00:00', transactionTime: '2024-03-04T00:00',
-        isBackdated: false,
+        isBackdated: false, causesReplay: false, causesNaiveDrift: false,
       },
       {
         activityId: '20240305', commonName: 'SOD — Interest Accrual', activityType: 'StartOfDay',
         direction: '', spread: '', amount: 0,
         effectiveAt: '2024-03-05T00:00', transactionTime: '2024-03-05T00:00',
-        isBackdated: false,
+        isBackdated: false, causesReplay: false, causesNaiveDrift: false,
       },
       {
-        activityId: '456', commonName: 'Payment', activityType: 'Transaction',
+        activityId: '456', commonName: 'Payment #456', activityType: 'Transaction',
         direction: 'DEBIT', spread: 'IPF', amount: 5000,
         effectiveAt: '2024-03-05T10:00', transactionTime: '2024-03-05T10:00',
-        isBackdated: false,
+        isBackdated: false, causesReplay: false, causesNaiveDrift: false,
       },
       {
-        activityId: '123_rev', commonName: 'Reversal of Payment #234', activityType: 'Reversal',
+        activityId: '123_rev', commonName: 'Reversal of #234', activityType: 'Reversal',
         direction: '', spread: '', amount: 0,
         effectiveAt: '2024-03-05T13:00', transactionTime: '2024-03-05T13:00',
-        isBackdated: false,
-        reversalOf: '234',
+        isBackdated: false, reversalOf: '234',
+        causesReplay: true, causesNaiveDrift: true,
+        comparisonNote: 'Conventional: local compensation only. PreciseLedgerPro: rollback, replay, append adjustments.',
       },
       {
-        activityId: '768', commonName: 'Backdated Payment', activityType: 'Transaction',
+        activityId: '768', commonName: 'Backdated Payment #768', activityType: 'Transaction',
         direction: 'DEBIT', spread: 'IPF', amount: 4000,
         effectiveAt: '2024-03-03T14:00', transactionTime: '2024-03-05T15:00',
         isBackdated: true,
+        causesReplay: true, causesNaiveDrift: true,
+        comparisonNote: 'Conventional: appended at end, stale downstream. PreciseLedgerPro: retroactive insert, replay, zero-delta skip.',
       },
     ],
 
-    /**
-     * Pre-computed ledger snapshots for each step.
-     * Each step lists the FULL set of entries that should exist after the activity is applied.
-     * This ensures financial accuracy matching the tested CSV expectations.
-     *
-     * Running balances must be consistent: each entry's balance = prev balance + delta.
-     */
-    snapshots: [],
+    naiveSnapshots: [],
+    preciseSnapshots: [],
+
+    naiveIdCounter: 0,
+    preciseIdCounter: 0,
 
     init() {
-      this.buildSnapshots();
+      this.buildPreciseSnapshots();
+      this.buildNaiveSnapshots();
     },
 
-    buildSnapshots() {
-      // We build the snapshots imperatively to match the verified test data.
-      // Steps 1-7 are straightforward; step 8 (reversal) and 9 (backdated) show
-      // the engine creating adjustment entries.
+    /* ========== ENTRY CONSTRUCTORS ========== */
 
+    naiveEntry(type, source, effectiveAt, principal, interest, principalBalance, interestBalance, statusBadge, statusBadgeClass, stale) {
+      return {
+        id: ++this.naiveIdCounter, entryType: type, sourceActivity: source,
+        effectiveAt, principal, interest,
+        principalBalance, interestBalance,
+        isNew: true, statusBadge: statusBadge || null, statusBadgeClass: statusBadgeClass || '',
+        stale: stale || false,
+      };
+    },
+
+    preciseEntry(type, source, effectiveAt, principal, interest, principalBalance, interestBalance, statusBadge, statusBadgeClass) {
+      return {
+        id: ++this.preciseIdCounter, entryType: type, sourceActivity: source,
+        effectiveAt, principal, interest,
+        principalBalance, interestBalance,
+        isNew: true, statusBadge: statusBadge || null, statusBadgeClass: statusBadgeClass || '',
+      };
+    },
+
+    /* ========== PRECISE SNAPSHOTS (from verified CSV) ========== */
+
+    buildPreciseSnapshots() {
       const r = (n) => Math.round(n * 100) / 100;
-      const di = DAILY_INTEREST_1M; // 273.9726041909307
+      const di = DAILY_INTEREST_1M;
 
-      // === Step 1: Disbursal ===
       const s1 = [
-        this.entry('Disbursal', 'Transaction-123', '2024-03-01T00:00', 1000000, 0, 1000000, 0),
+        this.preciseEntry('Disbursal', 'Transaction-123', '2024-03-01', 1000000, 0, 1000000, 0),
       ];
 
-      // === Step 2: SOD 03-02 ===
       const s2 = [...s1,
-        this.entry('StartOfDay', 'StartOfDay-20240302', '2024-03-02T00:00', 0, r(di), 1000000, r(di)),
+        this.preciseEntry('StartOfDay', 'SOD-20240302', '2024-03-02', 0, r(di), 1000000, r(di)),
       ];
 
-      // === Step 3: SOD 03-03 ===
       const s3 = [...s2,
-        this.entry('StartOfDay', 'StartOfDay-20240303', '2024-03-03T00:00', 0, r(di), 1000000, r(2*di)),
+        this.preciseEntry('StartOfDay', 'SOD-20240303', '2024-03-03', 0, r(di), 1000000, r(2*di)),
       ];
 
-      // === Step 4: Payment $10,000 (IPF = interest first) ===
-      // Interest balance = 547.95, so payment covers all interest + remainder to principal
-      const int4 = r(2*di);  // 547.95
-      const princ4 = r(-(10000 - int4));  // -(10000 - 547.95) = -9452.05
+      const int4 = r(2*di);
+      const princ4 = r(-(10000 - int4));
       const s4 = [...s3,
-        this.entry('Payment', 'Transaction-234', '2024-03-03T13:00', princ4, -int4, r(1000000 + princ4), 0),
+        this.preciseEntry('Payment', 'Transaction-234', '2024-03-03', princ4, -int4, r(1000000 + princ4), 0),
       ];
 
-      // === Step 5: SOD 03-04 ===
-      // Interest on reduced principal (990547.95) → but actually principal is 990547.95
-      const p5 = r(1000000 + princ4); // 990547.95
-      const dailyInt5 = r(p5 * 0.10 / 365); // ~271.38
+      const p5 = r(1000000 + princ4);
+      const dailyInt5 = r(p5 * 0.10 / 365);
       const s5 = [...s4,
-        this.entry('StartOfDay', 'StartOfDay-20240304', '2024-03-04T00:00', 0, dailyInt5, p5, dailyInt5),
+        this.preciseEntry('StartOfDay', 'SOD-20240304', '2024-03-04', 0, dailyInt5, p5, dailyInt5),
       ];
 
-      // === Step 6: SOD 03-05 ===
       const s6 = [...s5,
-        this.entry('StartOfDay', 'StartOfDay-20240305', '2024-03-05T00:00', 0, dailyInt5, p5, r(2*dailyInt5)),
+        this.preciseEntry('StartOfDay', 'SOD-20240305', '2024-03-05', 0, dailyInt5, p5, r(2*dailyInt5)),
       ];
 
-      // === Step 7: Payment $5,000 ===
-      const intBal7 = r(2*dailyInt5);  // ~542.76
+      const intBal7 = r(2*dailyInt5);
       const int7 = -intBal7;
-      const princ7 = r(-(5000 - intBal7));  // ~-4457.24
+      const princ7 = r(-(5000 - intBal7));
       const s7 = [...s6,
-        this.entry('Payment', 'Transaction-456', '2024-03-05T10:00', princ7, int7, r(p5 + princ7), 0),
+        this.preciseEntry('Payment', 'Transaction-456', '2024-03-05', princ7, int7, r(p5 + princ7), 0),
       ];
 
-      // === Step 8: Reversal of Payment #234 ===
-      // The reversal negates the impact of payment 234 (which was -9452.05 princ, -547.95 interest)
-      // Then engine replays SOD 03-04, 03-05, and payment 456 on the higher principal (1,000,000)
-      // Net effect after all adjustments: Activity 234's total impact becomes 0
-      //
-      // From the verified CSV expectations (FINAL state after ALL 9 activities):
-      //   234: principal=0, interest=0 (fully reversed)
-      //   20240304: principal=0, interest=273.03  (recalculated on full 1M principal)
-      //   20240305: principal=0, interest=273.03
-      //   456: principal=-4453.94, interest=-546.06
-      //
-      // So after step 8, we need adjustment entries.
-      // Before reversal: 234 had impact (-9452.05, -547.95). Now reversed to (0,0).
-      // SOD-304 recalculated: was 271.38, now should be ~273.03 (on 1M principal)
-      // SOD-305 recalculated: same
-      // Payment 456 recalculated: interest-first on new balances
-
-      // The engine creates:
-      // 1. Compensation entry reversing payment 234: +9452.05 principal, +547.95 interest
-      // 2. Adjustment for SOD-304: delta interest ~+1.65
-      // 3. Adjustment for SOD-305: delta interest ~+1.65
-      // 4. Adjustment for payment 456: delta (recalculated)
-
-      // Let's compute the post-reversal state precisely.
-      // After reversal, principal goes back to 1,000,000.
-
-      // Build the post-step-8 state:
-      const newDailyInt = r(1000000 * 0.10 / 365); // 273.97
-      const sodAdj = r(newDailyInt - dailyInt5); // diff per SOD day
-
-      // The compensation entry reverses payment 234
-      const comp8_princ = -princ4; // +9452.05
-      const comp8_int = int4;      // +547.95
-
-      // After comp entry, the principal balance goes back up
-      const pAfterComp = r((p5 + princ7) + comp8_princ);
-      const iAfterComp = r(0 + comp8_int);
-
-      // Adjustment for SOD-304
-      const adj304_int = sodAdj;
-      // Adjustment for SOD-305
-      const adj305_int = sodAdj;
-      // Adjustment for payment 456: the payment of 5000 now pays off different interest
-      // New interest at time of payment 456 = 547.95 (original 2 SODs) + 273.97*2 (recalculated SODs) – this is
-      // getting complex. Let me use the FINAL expected impacts directly from the CSV.
-
-      // From the expectation CSV (final state):
-      //   456: principal=-4453.94, interest=-546.06 → total impact
-      // Previously in step 7: 456 had (princ7, int7) = (-4457.24, -542.76)
-      // So adjustment for 456: princ_adj = -4453.94 - princ7, int_adj = -546.06 - int7
-
+      // Step 8: Reversal with rollback/replay/sync
+      const comp8_princ = -princ4;
+      const comp8_int = int4;
       const final456_p = -4453.94;
       const final456_i = -546.06;
       const adj456_p = r(final456_p - princ7);
       const adj456_i = r(final456_i - int7);
-
-      // Final SOD impacts from CSV: 20240304.interest = 273.03, 20240305.interest = 273.03
       const finalSOD_i = 273.03;
       const adj304_int_final = r(finalSOD_i - dailyInt5);
       const adj305_int_final = r(finalSOD_i - dailyInt5);
 
-      // Now build balances for each entry sequentially
-      let pBal = r(p5 + princ7); // before reversal
-      let iBal = 0; // before reversal
+      const s8 = [...s7];
+      let lastP = s7[s7.length-1].principalBalance;
+      let lastI = s7[s7.length-1].interestBalance;
 
-      // Reversal compensation
-      pBal = r(pBal + comp8_princ);
-      iBal = r(iBal + comp8_int);
-
-      // adj for SOD 304
-      iBal = r(iBal + adj304_int_final);
-
-      // adj for SOD 305
-      iBal = r(iBal + adj305_int_final);
-
-      // adj for 456
-      pBal = r(pBal + adj456_p);
-      iBal = r(iBal + adj456_i);
-
-      let runBal_p = r(1000000 + princ4); // start from the disbursal through the entries
-      let runBal_i = 0;
-
-      // Rebuild s8 properly: keep entries 1-7 (from s7) and add reversal + adjustments
-      // Actually, the entries from before remain, but we append new entries
-      const s8 = [...s7,
-        this.entry('Reversal', 'Reversal-234', '2024-03-05T13:00', comp8_princ, comp8_int, r(s7[s7.length-1].principalBalance + comp8_princ), r(s7[s7.length-1].interestBalance + comp8_int)),
-      ];
-
-      // Add adjustments with running balances
-      let lastP = s8[s8.length-1].principalBalance;
-      let lastI = s8[s8.length-1].interestBalance;
+      lastP = r(lastP + comp8_princ);
+      lastI = r(lastI + comp8_int);
+      s8.push(this.preciseEntry('Reversal', 'Reversal-234', '2024-03-05', comp8_princ, comp8_int, lastP, lastI, 'COMPENSATED', 'bg-red-500/15 text-red-400 border border-red-500/20'));
 
       if (Math.abs(adj304_int_final) > 0.001) {
         lastI = r(lastI + adj304_int_final);
-        s8.push(this.entry('Adjustment', 'StartOfDay-20240304', '2024-03-05T13:00', 0, adj304_int_final, lastP, lastI));
+        s8.push(this.preciseEntry('Adjustment', 'SOD-20240304', '2024-03-05', 0, adj304_int_final, lastP, lastI, 'RECALCULATED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20'));
       }
       if (Math.abs(adj305_int_final) > 0.001) {
         lastI = r(lastI + adj305_int_final);
-        s8.push(this.entry('Adjustment', 'StartOfDay-20240305', '2024-03-05T13:00', 0, adj305_int_final, lastP, lastI));
+        s8.push(this.preciseEntry('Adjustment', 'SOD-20240305', '2024-03-05', 0, adj305_int_final, lastP, lastI, 'RECALCULATED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20'));
       }
       if (Math.abs(adj456_p) > 0.001 || Math.abs(adj456_i) > 0.001) {
         lastP = r(lastP + adj456_p);
         lastI = r(lastI + adj456_i);
-        s8.push(this.entry('Adjustment', 'Transaction-456', '2024-03-05T13:00', adj456_p, adj456_i, lastP, lastI));
+        s8.push(this.preciseEntry('Adjustment', 'Transaction-456', '2024-03-05', adj456_p, adj456_i, lastP, lastI, 'RECALCULATED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20'));
       }
 
-      // === Step 9: Backdated Payment $4,000 (effectiveAt 03-03 14:00, txnTime 03-05 15:00) ===
-      // From CSV: 768 Transaction → principal=-3452.06, interest=-547.94
-      // This is another retroactive event. The engine rolls back and replays.
-      // After step 9, the FINAL impacts are as stated in the expectation CSV.
-      // We add the payment entry and any adjustments needed.
-
+      // Step 9: Backdated payment
       const pay9_p = -3452.06;
       const pay9_i = -547.94;
-
-      // After the backdated payment, SODs 304 and 305 would be recalculated again,
-      // and payment 456 would be recalculated again.
-      // But the CSV tells us the FINAL impacts are:
-      //   456: -4453.94 / -546.06  (same as after reversal)
-      //   768: -3452.06 / -547.94
-      //   20240304: 273.03
-      //   20240305: 273.03
-      // This means the backdated payment doesn't change the other impacts further.
-      // The ledger adds the payment entry and possibly adjustment entries.
-
-      // Let's add the payment and update running balances
-      let s9lastP = lastP;
-      let s9lastI = lastI;
-
-      s9lastP = r(s9lastP + pay9_p);
-      s9lastI = r(s9lastI + pay9_i);
-
+      lastP = r(lastP + pay9_p);
+      lastI = r(lastI + pay9_i);
       const s9 = [...s8,
-        this.entry('Payment', 'Transaction-768', '2024-03-03T14:00', pay9_p, pay9_i, s9lastP, s9lastI),
+        this.preciseEntry('Payment', 'Transaction-768', '2024-03-03', pay9_p, pay9_i, lastP, lastI, 'RETROACTIVE', 'bg-purple-500/15 text-purple-400 border border-purple-500/20'),
       ];
 
-      // Verify we might need adjustments for re-recalculated SODs and 456.
-      // The SOD daily interest on (1,000,000 - 3452.06) ≈ 996,547.94 →
-      // 996547.94 * 0.10 / 365 = 273.03 — same as before! So no additional adjustments needed.
-      // Same for 456.
-
-      this.snapshots = [s1, s2, s3, s4, s5, s6, s7, s8, s9];
+      this.preciseSnapshots = [s1, s2, s3, s4, s5, s6, s7, s8, s9];
     },
 
-    entry(type, source, effectiveAt, principal, interest, principalBalance, interestBalance) {
-      return {
-        id: ++this.entryIdCounter,
-        entryType: type,
-        sourceActivity: source,
-        effectiveAt: effectiveAt,
-        principal: principal,
-        interest: interest,
-        fee: 0,
-        excess: 0,
-        principalBalance: principalBalance,
-        interestBalance: interestBalance,
-        feeBalance: 0,
-        excessBalance: 0,
-        isNew: true,
-      };
+    /* ========== NAIVE SNAPSHOTS ========== */
+
+    buildNaiveSnapshots() {
+      const r = (n) => Math.round(n * 100) / 100;
+      const di = DAILY_INTEREST_1M;
+
+      // Steps 1-7: identical to precise
+      const s1 = [
+        this.naiveEntry('Disbursal', 'Transaction-123', '2024-03-01', 1000000, 0, 1000000, 0),
+      ];
+
+      const s2 = [...s1,
+        this.naiveEntry('StartOfDay', 'SOD-20240302', '2024-03-02', 0, r(di), 1000000, r(di)),
+      ];
+
+      const s3 = [...s2,
+        this.naiveEntry('StartOfDay', 'SOD-20240303', '2024-03-03', 0, r(di), 1000000, r(2*di)),
+      ];
+
+      const int4 = r(2*di);
+      const princ4 = r(-(10000 - int4));
+      const s4 = [...s3,
+        this.naiveEntry('Payment', 'Transaction-234', '2024-03-03', princ4, -int4, r(1000000 + princ4), 0),
+      ];
+
+      const p5 = r(1000000 + princ4);
+      const dailyInt5 = r(p5 * 0.10 / 365);
+      const s5 = [...s4,
+        this.naiveEntry('StartOfDay', 'SOD-20240304', '2024-03-04', 0, dailyInt5, p5, dailyInt5),
+      ];
+
+      const s6 = [...s5,
+        this.naiveEntry('StartOfDay', 'SOD-20240305', '2024-03-05', 0, dailyInt5, p5, r(2*dailyInt5)),
+      ];
+
+      const intBal7 = r(2*dailyInt5);
+      const int7 = -intBal7;
+      const princ7 = r(-(5000 - intBal7));
+      const s7 = [...s6,
+        this.naiveEntry('Payment', 'Transaction-456', '2024-03-05', princ7, int7, r(p5 + princ7), 0),
+      ];
+
+      // Step 8: Reversal — naive only compensates the original payment.
+      // It reverses the principal and interest impact of payment 234.
+      // But does NOT adjust downstream SODs or payment 456.
+      const comp_princ = -princ4;   // +9452.05
+      const comp_int = int4;         // +547.95
+      let nLastP = r(s7[s7.length-1].principalBalance + comp_princ);
+      let nLastI = r(s7[s7.length-1].interestBalance + comp_int);
+
+      // Mark downstream rows as stale
+      const s8 = s7.map((e, i) => {
+        // SOD-304 (index 4), SOD-305 (index 5), Payment-456 (index 6) become stale
+        if (i >= 4 && i <= 6) {
+          return { ...e, stale: true, statusBadge: 'NOT REPLAYED', statusBadgeClass: 'bg-red-500/10 text-red-400/70 border border-red-500/15' };
+        }
+        return { ...e };
+      });
+      s8.push(this.naiveEntry('Reversal', 'Reversal-234', '2024-03-05', comp_princ, comp_int, nLastP, nLastI, 'COMPENSATED ONLY', 'bg-red-500/15 text-red-400 border border-red-500/20'));
+
+      // Step 9: Backdated payment — naive appends at end without replay.
+      // It applies payment on current balances (post-reversal).
+      // Interest balance is 547.95, so payment of 4000:
+      //   interest portion: -547.95, principal portion: -(4000 - 547.95) = -3452.05
+      const naivePay9_int = -nLastI;  // -547.95
+      const naivePay9_princ = r(-(4000 - nLastI));  // -3452.05
+      nLastP = r(nLastP + naivePay9_princ);
+      nLastI = r(nLastI + naivePay9_int);
+
+      const s9 = s8.map(e => ({ ...e }));
+      s9.push(this.naiveEntry('Payment', 'Transaction-768', '2024-03-03', naivePay9_princ, naivePay9_int, nLastP, nLastI, 'ECONOMICALLY MISORDERED', 'bg-amber-500/15 text-amber-400 border border-amber-500/20'));
+
+      this.naiveSnapshots = [s1, s2, s3, s4, s5, s6, s7, s8, s9];
     },
+
+    /* ========== INTERACTION ========== */
 
     async applyNext() {
       if (this.currentStep >= this.activities.length) return;
       const act = this.activities[this.currentStep];
 
-      // Show engine overlay for special activities
-      if (act.activityType === 'Reversal') {
-        this.engineIcon = '⟲';
-        this.engineTitle = 'Reversal Engine Active';
-        this.engineMsg = 'Compensation entry → rollback → replay → sync';
+      // Engine overlay for retroactive events
+      if (act.causesReplay) {
+        if (act.activityType === 'Reversal') {
+          this.engineIcon = '⟲';
+          this.engineMsg = 'Compensation → Rollback → Replay → Diff → Append adjustments';
+          this.naiveEngineMsg = 'Local compensation only. No downstream replay.';
+        } else {
+          this.engineIcon = '⏪';
+          this.engineMsg = 'Rollback to 2024-03-03 → Insert → Replay → Diff → Append';
+          this.naiveEngineMsg = 'Payment appended. Downstream entries unchanged.';
+        }
         this.engineActive = true;
-        await this.sleep(1800);
-        this.engineActive = false;
-        await this.sleep(200);
-      } else if (act.isBackdated) {
-        this.engineIcon = '⏪';
-        this.engineTitle = 'Retroactive Reconciliation';
-        this.engineMsg = 'Rollback to 2024-03-03 → apply → replay → sync';
-        this.engineActive = true;
-        await this.sleep(1800);
+        await this.sleep(2000);
         this.engineActive = false;
         await this.sleep(200);
       }
 
-      // Mark old entries as not new
-      this.entries.forEach(e => e.isNew = false);
+      // Apply snapshots to both engines
+      this.applySnapshot('naive', this.naiveSnapshots[this.currentStep]);
+      this.applySnapshot('precise', this.preciseSnapshots[this.currentStep]);
 
-      // Set entries to the snapshot for this step
-      const snap = this.snapshots[this.currentStep];
-      const oldLen = this.entries.length;
+      // Update engine statuses
+      if (this.currentStep >= 7) {
+        this.engines.naive.status = 'Economically stale — downstream derived entries not recomputed.';
+        this.engines.naive.warnings = this.getNaiveWarnings();
+        this.engines.precise.status = 'Replay complete — all downstream entries recalculated.';
+      } else {
+        this.engines.naive.status = '';
+        this.engines.naive.warnings = [];
+        this.engines.precise.status = '';
+      }
 
-      // New entries get the isNew flag
-      const newEntries = snap.map((e, i) => ({
+      this.currentStep++;
+
+      // Auto-open explainer for critical steps
+      if (this.currentStep === 8) {
+        this.openReversalExplainer();
+      } else if (this.currentStep === 9) {
+        this.openBackdatedExplainer();
+      }
+    },
+
+    applySnapshot(engineKey, snap) {
+      const engine = this.engines[engineKey];
+      const oldLen = engine.entries.length;
+      engine.entries = snap.map((e, i) => ({
         ...e,
-        id: i + 1,  // stable IDs
         isNew: i >= oldLen,
       }));
-
-      this.entries = newEntries;
-      this.updateBalances();
-      this.currentStep++;
+      if (engine.entries.length > 0) {
+        const last = engine.entries[engine.entries.length - 1];
+        engine.balances = {
+          principal: last.principalBalance,
+          interest: last.interestBalance,
+          fee: 0, excess: 0,
+        };
+      } else {
+        engine.balances = { principal: 0, interest: 0, fee: 0, excess: 0 };
+      }
     },
 
     async applyAll() {
       while (this.currentStep < this.activities.length) {
         await this.applyNext();
-        await this.sleep(400);
+        await this.sleep(500);
+      }
+    },
+
+    async jumpTo(targetStep) {
+      this.showExplainer = false;
+      while (this.currentStep < targetStep) {
+        this.applySnapshot('naive', this.naiveSnapshots[this.currentStep]);
+        this.applySnapshot('precise', this.preciseSnapshots[this.currentStep]);
+        this.currentStep++;
+      }
+      // Now apply the target step with full animation
+      if (this.currentStep < this.activities.length) {
+        await this.applyNext();
       }
     },
 
     reset() {
       this.currentStep = 0;
-      this.entries = [];
-      this.balances = { principal: 0, interest: 0, fee: 0, excess: 0 };
-      this.entryIdCounter = 0;
-      this.buildSnapshots();
+      this.engines.naive.entries = [];
+      this.engines.naive.balances = { principal: 0, interest: 0, fee: 0, excess: 0 };
+      this.engines.naive.status = '';
+      this.engines.naive.warnings = [];
+      this.engines.precise.entries = [];
+      this.engines.precise.balances = { principal: 0, interest: 0, fee: 0, excess: 0 };
+      this.engines.precise.status = '';
+      this.showExplainer = false;
+      this.naiveIdCounter = 0;
+      this.preciseIdCounter = 0;
+      this.buildPreciseSnapshots();
+      this.buildNaiveSnapshots();
     },
 
-    updateBalances() {
-      if (this.entries.length === 0) {
-        this.balances = { principal: 0, interest: 0, fee: 0, excess: 0 };
-      } else {
-        const last = this.entries[this.entries.length - 1];
-        this.balances = {
-          principal: last.principalBalance,
-          interest: last.interestBalance,
-          fee: last.feeBalance,
-          excess: last.excessBalance,
-        };
-      }
+    /* ========== EXPLAINER DRAWERS ========== */
+
+    openReversalExplainer() {
+      this.explainerTitle = 'Step 8 — Reversal of Payment #234';
+      this.explainerNaive = 'Added a single compensation entry reversing the original $10,000 payment impact (+$9,452.05 principal, +$547.95 interest). <strong>No downstream recalculation.</strong> SOD accruals on 03-04 and 03-05 still reflect the lower principal ($990,547.95). Payment #456 still allocated against the stale interest balance. The ledger is internally consistent as appended, but economically stale.';
+      this.explainerPrecise = 'Added the same compensation entry, then <strong>rolled back and replayed</strong> all downstream derived entries. SOD accruals on 03-04 and 03-05 were recalculated on the corrected $1,000,000 principal. Payment #456 was re-allocated against the updated interest balance. Three adjustment entries record the exact deltas — each traceable to its source activity.';
+      this.explainerWhy = 'The conventional ledger now carries <strong>stale SOD accruals</strong> computed on $990,547.95 instead of $1,000,000. Payment #456 allocated $542.76 to interest instead of the correct $546.06. These errors compound silently. A collector, biller, or auditor sees a plausible ledger — but the interest balance is no longer economically grounded. Support must explain local compensations instead of true causality.';
+      this.showExplainer = true;
     },
+
+    openBackdatedExplainer() {
+      this.explainerTitle = 'Step 9 — Backdated Payment #768 ($4,000)';
+      this.explainerNaive = 'Appended the $4,000 payment at the end of the ledger. The effective date shows March 3, but the payment was applied against post-reversal balances (March 5). <strong>Downstream SOD accruals and payment #456 remain unchanged.</strong> The ledger chronology and economics have permanently diverged.';
+      this.explainerPrecise = 'Rolled the ledger back to March 3, inserted the payment at its true economic date, then replayed all subsequent activities on the corrected balances. The $4,000 reduction on a ~$1M principal changes daily interest by less than a cent once rounded — so replayed SOD accruals produce identical values. <strong>Zero-delta adjustments were skipped.</strong> Only real differences get recorded. This is "append-only" without being "dumb append."';
+      this.explainerWhy = 'The conventional ledger now shows a payment with an effective date of March 3 that was actually applied against March 5 balances. <strong>The economic ordering and the ledger ordering have permanently diverged.</strong> Any future replay, audit, or reconciliation must manually account for this discrepancy. PreciseLedgerPro maintains a single coherent timeline — the ledger <em>is</em> the authoritative economic record, not a lossy approximation of it.';
+      this.showExplainer = true;
+    },
+
+    /* ========== COMPARISON HELPERS ========== */
+
+    hasDivergence() {
+      return Math.abs(this.getPrincipalDrift()) > 0.005 || Math.abs(this.getInterestDrift()) > 0.005;
+    },
+
+    getPrincipalDrift() {
+      return this.engines.naive.balances.principal - this.engines.precise.balances.principal;
+    },
+
+    getInterestDrift() {
+      return this.engines.naive.balances.interest - this.engines.precise.balances.interest;
+    },
+
+    hasPrincipalDrift() { return Math.abs(this.getPrincipalDrift()) > 0.005; },
+    hasInterestDrift() { return Math.abs(this.getInterestDrift()) > 0.005; },
+
+    getDivergenceSummary() {
+      const parts = [];
+      if (this.hasPrincipalDrift()) parts.push('Princ: $' + this.formatNum(Math.abs(this.getPrincipalDrift())));
+      if (this.hasInterestDrift()) parts.push('Int: $' + this.formatNum(Math.abs(this.getInterestDrift())));
+      return parts.join(' | ');
+    },
+
+    getNaiveScore() {
+      if (this.currentStep <= 7) return 100;
+      if (this.currentStep === 8) return 70;
+      return 55;
+    },
+
+    getPreciseScore() { return 100; },
+
+    countNaiveAdjustments() {
+      return this.engines.naive.entries.filter(e => e.entryType === 'Adjustment').length;
+    },
+
+    countPreciseAdjustments() {
+      return this.engines.precise.entries.filter(e => e.entryType === 'Adjustment').length;
+    },
+
+    getNaiveWarnings() {
+      const w = [];
+      if (this.currentStep >= 8) {
+        w.push('SOD-20240304 and SOD-20240305 accrued on stale principal ($990,547.95 instead of $1,000,000).');
+        w.push('Payment #456 allocated against stale interest balance.');
+      }
+      if (this.currentStep >= 9) {
+        w.push('Backdated payment #768 applied against current-state balances, not economic-date balances.');
+      }
+      return w;
+    },
+
+    getImpactDiffRows() {
+      const step = this.currentStep;
+      if (step < 8) return [];
+
+      const r = (n) => Math.round(n * 100) / 100;
+      const di = DAILY_INTEREST_1M;
+      const int4 = r(2*di);
+      const princ4 = r(-(10000 - int4));
+      const p5 = r(1000000 + princ4);
+      const dailyInt5 = r(p5 * 0.10 / 365);
+      const intBal7 = r(2*dailyInt5);
+
+      const rows = [];
+
+      // Payment #234 — reversed in both
+      rows.push({
+        activity: 'Payment #234',
+        naivePrinc: princ4, naiveInt: -int4,
+        precisePrinc: 0, preciseInt: 0,
+        reason: step >= 8 ? 'Reversed. Precise net impact=0 (adjustments cancel).' : '',
+        diverges: step >= 8,
+      });
+
+      // SOD 03-04
+      const finalSOD = 273.03;
+      rows.push({
+        activity: 'SOD 2024-03-04',
+        naivePrinc: 0, naiveInt: dailyInt5,
+        precisePrinc: 0, preciseInt: finalSOD,
+        reason: step >= 8 ? 'Not replayed vs recalculated on $1M principal.' : '',
+        diverges: step >= 8,
+      });
+
+      // SOD 03-05
+      rows.push({
+        activity: 'SOD 2024-03-05',
+        naivePrinc: 0, naiveInt: dailyInt5,
+        precisePrinc: 0, preciseInt: finalSOD,
+        reason: step >= 8 ? 'Not replayed vs recalculated on $1M principal.' : '',
+        diverges: step >= 8,
+      });
+
+      // Payment #456
+      const princ7 = r(-(5000 - intBal7));
+      rows.push({
+        activity: 'Payment #456',
+        naivePrinc: princ7, naiveInt: -intBal7,
+        precisePrinc: -4453.94, preciseInt: -546.06,
+        reason: step >= 8 ? 'Naive allocated on stale interest. Precise re-allocated.' : '',
+        diverges: step >= 8,
+      });
+
+      // Backdated Payment #768
+      if (step >= 9) {
+        // Naive: applied against post-reversal current balances
+        const nLastI = int4; // 547.95 after reversal restored it
+        const naivePay9_int = -nLastI;
+        const naivePay9_princ = r(-(4000 - nLastI));
+        rows.push({
+          activity: 'Payment #768 (backdated)',
+          naivePrinc: naivePay9_princ, naiveInt: naivePay9_int,
+          precisePrinc: -3452.06, preciseInt: -547.94,
+          reason: 'Naive applied on current balances. Precise applied at economic date.',
+          diverges: true,
+        });
+      }
+
+      return rows;
+    },
+
+    /* ========== FORMATTING ========== */
 
     formatNum(n) {
       return Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
