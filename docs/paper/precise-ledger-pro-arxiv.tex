@@ -1,0 +1,1043 @@
+%% precise-ledger-pro-arxiv.tex
+%% arXiv submission: cs.DB (primary), cs.SE (secondary)
+%% Authors: Vibhor Mahajan, Raman Bedi
+%% Draft — April 1, 2026
+%%
+%% REVIEW FIXES APPLIED (from peer review, April 2026):
+%%   D1  – Replaced fabricated Meijer & Fokkinga [1991] citation with
+%%          Gray & Reuter (1992) "Transaction Processing".
+%%   D2  – Replaced misattributed Hellerstein et al. [2019] with
+%%          Gray & Reuter (same citation, legitimately relevant).
+%%   D3  – Removed dangling Graefe [2011] reference; added in-text
+%%          citation in §8.4 where it is substantively relevant.
+%%   D4  – Abstract revised: "no balance drift" → "no unintended drift".
+%%          Added clarifying sentence in §7.3.
+%%   D5  – Raman Bedi affiliation placeholder added (confirm before
+%%          submission).
+%%   D6  – Algorithm 1 complexity: distinct variable p introduced for
+%%          fork-prefix size to resolve k/k name collision.
+%%   D7  – Draft metadata moved entirely to these comment lines; absent
+%%          from rendered PDF.
+%%   D8  – ACM CCS primary corrected to "Transaction management".
+%%   D9  – Trailing space and bare URL fixed; \url{} used.
+%%   D10 – Single-entry model limitation stated in §8.4.
+%%   D11 – Commercial platform names removed; replaced with generic text.
+%%   D12 – HTML <sub> tags replaced with proper LaTeX subscripts.
+
+\documentclass[11pt,letterpaper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{times}                  % arXiv-recommended: ~10% more text per page
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}               % professional table rules
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{microtype}              % better line-breaking
+\usepackage{parskip}                % inter-paragraph spacing
+\usepackage[hyphens]{url}
+\usepackage[colorlinks=true,
+            linkcolor=blue,
+            citecolor=blue,
+            urlcolor=blue]{hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{caption}
+%% subcaption removed (R4-4): imported but never used
+
+%% Listings style for pseudocode-like verbatim blocks
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  columns=flexible,
+  keepspaces=true,
+  frame=single,
+  framesep=4pt,
+  rulecolor=\color{gray!40},
+  backgroundcolor=\color{gray!5},
+}
+
+%% Note: the built-in \Comment{} from algpseudocode is used throughout.
+
+\title{\textbf{Retroactive Reconciliation in Financial Ledgers:\\
+A Fork-and-Sync Architecture for Out-of-Order Activities\\
+and Reversals with Per-Entry Traced Corrections}}
+
+\author{
+  Vibhor Mahajan\\
+  \small Independent Researcher\\
+  \small \texttt{vibhor.mahajan@gmail.com}
+  \and
+  Raman Bedi\\
+  \small \textit{[Affiliation — confirm before submission]}\\
+}
+
+\date{April 1, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Financial ledger systems in lending institutions must accommodate two
+classes of late-arriving events that violate chronological ordering
+assumptions: out-of-order (backdated) payment activities and reversals
+of previously applied activities. Existing approaches---full ledger reconstruction, append-only
+compensating entries, and mutable rewriting---each fail to
+simultaneously preserve the complete audit trail, individually
+attribute each correction entry to its source activity, maintain
+derived-calculation correctness, and support arbitrary future
+retroactive events. We present a \emph{fork-and-sync} architecture
+that addresses all four requirements. When a retroactive
+event arrives, the system forks the primary ledger at the appropriate
+historical insertion point, applies the event and replays all subsequent
+activities on the fork, and then reconciles the fork back into the
+primary ledger by computing per-activity balance-impact deltas. Each
+reconciliation emits individual, source-attributed adjustment entries
+rather than a single grouped correction, preserving entry-level audit
+traceability and enabling clean composition of future retroactive
+events. A virtual ledger clock decouples logical time from wall-clock
+time to guarantee deterministic replay. We describe the algorithmic
+design, implement it in a reference system, and provide a comparative
+evaluation against a conventional grouped-adjustment ledger processing
+nine activities that include a reversal and a backdated payment,
+demonstrating full audit traceability with no unintended balance drift.
+\end{abstract}
+
+%% ACM CCS 2012 (D8 fix)
+\noindent\textbf{ACM CCS:} Information systems~$\to$~Transaction management;
+Information systems~$\to$~Data streams;
+Software and its engineering~$\to$~Software reliability.
+
+\noindent\textbf{Keywords:} financial ledger, retroactive reconciliation,
+fork-and-sync, audit trail, idempotency, bitemporal, event replay.
+
+\tableofcontents
+\newpage
+
+% =========================================================================
+\section{Introduction}
+% =========================================================================
+
+Loan servicing systems must process millions of ledger activities daily,
+yet financial events routinely arrive out of chronological order. A
+payment may be applied days after its contractual effective date, a
+disbursement may be discovered to have been incorrectly processed, or a
+regulatory investigation may require reversing a fee applied months ago.
+Each such event is not merely an append at the tail of the ledger---it
+changes the basis on which every subsequent derived value (daily
+interest accrual, balance allocation) was computed.
+
+Three strategies are prevalent in practice. \textbf{Full
+reconstruction} rebuilds the entire ledger from its initial state each
+time a retroactive event arrives. This is correct but computationally
+expensive: for a ledger with thousands of entries and a retroactive
+event at position~$k$, the cost is proportional to the number of
+entries following~$k$ that must be recomputed and persisted.
+\textbf{Append-only compensation} appends a single correcting entry (or
+a small group of entries) without recomputing the downstream derived
+values that depended on the corrected balance. This is efficient but
+produces balance drift whenever the corrected activity altered the basis
+for any subsequent temporal calculation. \textbf{Mutable rewriting}
+updates historical entry values in place, which destroys the immutable
+audit trail required by financial regulations and introduces concurrency
+hazards.
+
+A fourth technique---grouping downstream corrections into a single
+opaque adjustment entry---is balance-correct but violates a subtler
+invariant: it destroys entry-level audit traceability. When a grouped
+adjustment of, say, $+\$3.30$ appears in a ledger, neither an auditor
+nor a subsequent retroactive event processor can determine which of the
+original entries it corrects, or by how much, without replaying the
+entire history from scratch.
+
+This paper presents \textbf{PreciseLedgerPro}, a system and
+accompanying algorithm family that resolves this tension. The core
+innovation is a fork-and-sync protocol in which:
+\begin{enumerate}[label=\arabic*.]
+  \item The primary ledger is never mutated; its original entries form
+        the permanent audit record.
+  \item A retroactive fork contains the corrected view of history,
+        computed efficiently from the insertion point onward.
+  \item Per-activity differential reconciliation emits one individually
+        source-attributed adjustment entry per divergent downstream
+        activity---not a single grouped correction.
+  \item A virtual ledger clock advances only forward, providing a
+        consistent time reference for deterministic replay of
+        time-dependent calculations.
+  \item Composite idempotency keys prevent duplicate entries during
+        recursive replay cycles.
+\end{enumerate}
+
+The result is a ledger in which every row---including every
+correction---can be explained by reference to a single source activity,
+and in which any subsequent retroactive event can be applied cleanly
+without reference to a decomposed adjustment history.
+
+The remainder of this paper is organized as follows. Section~\ref{sec:background}
+provides background on financial ledger data models and formalizes the
+problem. Section~\ref{sec:related} surveys related work.
+Section~\ref{sec:architecture} describes the system architecture and
+data model. Section~\ref{sec:algorithms} presents the four core
+algorithms. Section~\ref{sec:implementation} describes the reference
+implementation. Section~\ref{sec:evaluation} provides a comparative
+evaluation. Section~\ref{sec:discussion} discusses design trade-offs,
+limitations, and future work. Section~\ref{sec:conclusion} concludes.
+
+% =========================================================================
+\section{Background and Problem Statement}
+\label{sec:background}
+% =========================================================================
+
+\subsection{Ledger Data Model}
+
+A financial ledger for a loan account maintains an ordered sequence of
+\emph{ledger entries}. Each entry is an immutable record capturing:
+
+\begin{itemize}
+  \item An incremental balance change across multiple components:
+        principal~$\delta_P$, interest~$\delta_I$, fee~$\delta_F$, excess~$\delta_E$.
+  \item A running balance $(P, I, F, E)$ after this entry, computed as
+        the running balance of the preceding entry plus the incremental
+        change.
+  \item An \texttt{effectiveAt} timestamp: the business-effective date
+        of the originating activity.
+  \item A \texttt{createdAt} timestamp: the system processing time.
+  \item A \emph{source activity identifier}: a (type, id) pair that
+        links the entry to the ledger activity that created it.
+\end{itemize}
+
+A \textbf{ledger activity} is an abstract event---a payment, a
+disbursement, a daily interest accrual, a reversal---that \emph{applies
+to} a ledger by generating one or more ledger entries.
+
+Formally, let $L = \langle e_1, e_2, \ldots, e_n \rangle$ be the
+primary ledger ordered by \texttt{effectiveAt}. For a new activity~$a$
+with effective date~$t$:
+\begin{itemize}
+  \item $a$ is \textbf{in-order} if $t \geq \text{effectiveAt}(e_n)$.
+  \item $a$ is \textbf{backdated} (out-of-order) if
+        $t < \text{effectiveAt}(e_n)$.
+\end{itemize}
+
+\subsection{Derived Values and the Correction Problem}
+
+Daily interest accrual---the canonical temporal ledger activity---computes:
+\begin{equation}
+  \text{interest}_d = P_{d-1} \times \frac{r}{d_c}
+\end{equation}
+where $P_{d-1}$ is the principal balance at the close of day $d-1$,
+$r$~is the annual interest rate, and $d_c$~is the day-count basis
+(e.g., $d_c = 365$ for actual/365). If a
+backdated event at position~$k$ changes $P_{k-1}$, then every
+subsequent daily interest entry must be recomputed, since each entry's
+interest accrual depends on the running principal balance at its own
+computation time.
+
+The correction problem is therefore: given a retroactive event that
+changes the balance at position~$k$ in a ledger of $n$ entries
+($k < n$), efficiently propagate the correct balance deltas to all
+entries at positions $k{+}1$ through $n$ without destroying the
+original entry history.
+
+\subsection{Requirements}
+
+We derive four requirements from financial system practice:
+
+\begin{description}
+  \item[R1 (Correctness)] After applying any retroactive event, running
+    balances of all subsequent entries must reflect the corrected history.
+  \item[R2 (Audit Immutability)] Original ledger entries must not be
+    modified or deleted.
+  \item[R3 (Entry-Level Traceability)] Each correction entry must
+    identify the source activity it corrects.
+  \item[R4 (Retroactive Composability)] The ledger must support a
+    subsequent retroactive event without requiring decomposition of
+    prior correction entries.
+\end{description}
+
+Systems based on full reconstruction satisfy R1--R4 but at high
+computational cost. Grouped-adjustment approaches satisfy R1--R2 but
+violate R3--R4. Mutable rewriting satisfies only R1. This paper
+provides a system that satisfies all four.
+
+% =========================================================================
+\section{Related Work}
+\label{sec:related}
+% =========================================================================
+
+\subsection{Event Sourcing and Append-Only Ledgers}
+
+Event sourcing \cite{fowler2005} stores state changes as an immutable
+sequence of events from which current state is derived by replay. While
+event sourcing provides R2, standard implementations reconstruct current
+state by full replay, satisfying R1 only if the replay is complete and
+ordered. They do not address the efficiency problem of partial
+re-derivation from an insertion point, nor do they produce individually
+traced correction entries (R3).
+
+\subsection{Bitemporal Data Models}
+
+Snodgrass~\cite{snodgrass1999} and Jensen et al.~\cite{jensen1994}
+formalize bitemporal databases that track both \emph{valid time}
+(business-effective time) and \emph{transaction time} (system recording
+time). Bitemporal models preserve full history but typically require
+query-time reconstruction to derive correct values at arbitrary time
+points---they do not produce an updated, materially correct running
+ledger in place. The fork-and-sync approach presented here can be
+viewed as a form of bitemporal reconciliation that materializes
+corrected running balances in the primary ledger while respecting
+transaction-time immutability.
+
+\subsection{Compensating Transactions and Sagas}
+
+The saga pattern \cite{garciamolinasalem1987} uses compensating
+transactions to undo the effects of failed or rolled-back long-running
+transactions. A reversal activity in our model is structurally similar
+to a compensating transaction, but differs in a critical respect: a
+simple compensation negates only the direct impact of the reversed
+activity. It does not account for the downstream derived effects---the
+interest accruals and allocation changes that occurred because of the
+now-reversed balance state. Our reversal algorithm generates both a
+compensation entry and a differential reconciliation of all downstream
+derived values.
+
+\subsection{Financial Transaction Processing}
+\label{sec:related-financial}
+
+Gray and Reuter~\cite{grayreuter1992} provide the foundational
+treatment of transaction processing systems, including isolation,
+durability, and compensating transactions. The OLAP literature
+addresses aggregate balance queries over large financial datasets, but
+handling retroactive insertions with maintained running balances has
+received limited attention in academic systems research. Proprietary
+commercial loan servicing platforms handle backdating operationally, but
+their algorithms are not publicly documented.
+
+\subsection{Idempotent Processing}
+
+Idempotency in distributed systems is well-studied
+\cite{bernsteingoodman1981}. Our use of composite idempotency keys on
+ledger entries, rather than at the transaction level, is specific to the
+recursive replay problem: the same ledger activity may be encountered
+multiple times during nested retroactive recursion, and the key must be
+stable across all encounters to prevent duplicates.
+
+% =========================================================================
+\section{System Architecture}
+\label{sec:architecture}
+% =========================================================================
+
+\subsection{Core Data Structures}
+
+\textbf{Ledger.}~An ordered list of \texttt{LedgerEntry} records
+associated with a single loan account. The ledger supports:
+\begin{itemize}
+  \item \texttt{addEntry(e)}---idempotent append with running-balance
+        recomputation.
+  \item \texttt{rollbackToEntryBefore(effectiveAt)}---returns a new
+        ledger (fork) containing only entries with
+        \texttt{effectiveAt}~$\leq$~the given timestamp.
+  \item \texttt{rollbackToEntryBefore(activityType, activityId)}---returns
+        a fork excluding all entries from the first entry of a given
+        source activity onward.
+  \item \texttt{calculateTotalImpact(activityType, activityId)}---returns
+        the sum of all balance changes across all entries attributed to
+        a given source activity.
+  \item \texttt{getCurrentBalance()}---returns the running
+        multi-component balance.
+\end{itemize}
+
+The current model is a single-entry running-balance record per loan
+account and does not enforce double-entry bookkeeping constraints
+(debits = credits). Extension to double-entry contra-account ledgers is
+future work.
+
+\textbf{LedgerEntry.}~An immutable record; key fields are shown in
+Table~\ref{tab:ledgerentry}.
+
+\begin{table}[h!]
+\centering
+\caption{Key fields of \texttt{LedgerEntry}.}
+\label{tab:ledgerentry}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{5.2cm}X}
+  \toprule
+  \textbf{Field} & \textbf{Description} \\
+  \midrule
+  \texttt{entryType} & Semantic classification: Disbursal, Payment,
+                       StartOfDay, Reversal, Adjustment \\
+  \texttt{principal}, \texttt{interest}, \texttt{fee}, \texttt{excess}
+                     & Incremental balance changes per component \\
+  \texttt{principalBalance}, \texttt{interestBalance}, \ldots
+                     & Running balances after this entry \\
+  \texttt{effectiveAt} & Business-effective timestamp \\
+  \texttt{createdAt}   & Processing-time timestamp \\
+  \texttt{sourceLedgerActivityType} & Type of the originating activity \\
+  \texttt{sourceLedgerActivityId}   & ID of the originating activity \\
+  \bottomrule
+\end{tabularx}
+\end{table}
+
+The composite idempotency key is a deterministic hash of
+(\texttt{loanId}, \texttt{entryId}, \texttt{entryType},
+\texttt{sourceLedgerActivityType}, \texttt{sourceLedgerActivityId},
+\texttt{effectiveAt}).
+
+\textbf{Balance.}~A 4-tuple $(P,\,I,\,F,\,E)$ supporting
+component-wise addition, subtraction, negation, and
+total-amount computation.
+
+\subsection{Ledger Activities}
+
+A \texttt{LedgerActivity} is an abstract object with
+\texttt{effectiveAt}, \texttt{createdAt}, and \texttt{activityId}
+fields. An activity \emph{applies to} a ledger by generating ledger
+entries. Three concrete subtypes are defined:
+
+\begin{itemize}
+  \item \textbf{Transaction.}~A payment or disbursement that applies a
+        \texttt{TransactionSpreadStrategy} to the current balance to
+        determine per-component impacts. Two spread strategies are
+        provided: \emph{computational spread} (configurable waterfall
+        allocation with overflow to excess) and \emph{static spread}
+        (direct per-component assignment).
+  \item \textbf{TemporalActivity.}~A time-driven activity
+        (e.g., daily interest accrual) that computes entries using an
+        injected \texttt{TemporalActivityContext} supplying interest
+        rates and day-count conventions. Injection enables deterministic
+        replay independent of external state.
+  \item \textbf{ReversalActivity.}~An activity that reverses a
+        previously applied activity; handled by
+        Algorithm~\ref{alg:reversal} (Section~\ref{sec:alg-reversal}).
+\end{itemize}
+
+An activity is classified as backdated if its \texttt{effectiveAt}
+precedes the \texttt{effectiveAt} of the ledger's most recent entry.
+
+\subsection{LedgerClock}
+
+The \texttt{LedgerClock} is a virtual monotonic clock passed as a
+parameter to all activity application methods. It:
+\begin{itemize}
+  \item Starts at a defined minimum timestamp.
+  \item Advances only forward through \texttt{advanceTime(t)}.
+  \item Rejects backward adjustments during forward processing.
+\end{itemize}
+
+During retroactive replay, the clock's \texttt{now()} value is fixed to
+the snapshot time of the primary ledger at the point of invocation.
+This ensures that time-dependent derived values (e.g., daily interest
+amounts) are computed deterministically regardless of wall-clock time.
+The clock's externally controlled nature also enables isolated,
+reproducible unit testing of all processing paths.
+
+\subsection{Component Interaction}
+
+Figure~\ref{fig:orchestration} illustrates runtime component
+interaction. The \texttt{LedgerService} orchestrates all algorithm
+variants. Activity classification is performed on each iteration. For
+normal activities, the activity is applied directly. For backdated
+activities, \texttt{performBackdatedActivity} is invoked. For
+reversals, \texttt{reverseLedgerActivity} is invoked. Both delegates
+conclude with \texttt{syncWithRetroactiveLedger}.
+
+\begin{figure}[h!]
+\begin{lstlisting}
+LedgerService
+  applyLedgerActivities(ledger, activities, clock, ctx)
+     |
+     +-- [in-order]   --> activity.applyTo(ledger, clock, ctx)
+     |
+     +-- [backdated]  --> performBackdatedActivity(...)
+     |                      |
+     |                      +-- rollbackToEntryBefore(t)
+     |                      +-- activity.applyTo(fork, ...)
+     |                      +-- applyLedgerActivities(fork,...)  <- recursive
+     |                      +-- syncWithRetroactiveLedger(...)
+     |
+     +-- [reversal]   --> reverseLedgerActivity(...)
+                            |
+                            +-- calculateTotalImpact(...)
+                            +-- generateCompensationEntry(...)
+                            +-- rollbackToEntryBefore(type, id)
+                            +-- applyLedgerActivities(fork,...)  <- recursive
+                            +-- syncWithRetroactiveLedger(...)
+\end{lstlisting}
+\caption{\texttt{LedgerService} orchestration and recursive delegation
+to fork-and-sync sub-routines.}
+\label{fig:orchestration}
+\end{figure}
+
+% =========================================================================
+\section{Algorithms}
+\label{sec:algorithms}
+% =========================================================================
+
+\subsection{Algorithm 1: Retroactive Fork-and-Sync for Backdated Activities}
+\label{sec:alg-backdated}
+
+\textbf{Precondition:} A ledger activity~$a$ arrives with
+$a.\texttt{effectiveAt} < \text{ledger.latestEntry.effectiveAt}$.
+
+\textbf{Postcondition:} The primary ledger contains the correct running
+balances for all entries following the insertion point, with each
+downstream correction attributed to its source activity.
+
+\begin{algorithm}[H]
+\caption{Retroactive Fork-and-Sync for a Backdated Activity}
+\label{alg:backdated}
+\begin{algorithmic}[1]
+\Require Primary ledger $L$, backdated activity $a$, clock, context ctx
+\Ensure $L$ updated with $a$ applied at its economic date and all
+        downstream corrections individually traced
+\State $\text{fork} \leftarrow L.\texttt{rollbackToEntryBefore}(a.\texttt{effectiveAt})$
+\State $p \leftarrow |\text{fork.entries}|$
+  \Comment{bookmark: fork-prefix size}
+\State $a.\texttt{applyTo}(\text{fork},\,\text{clock},\,\text{ctx})$
+\For{each new entry $e$ in $\text{fork}[p..\text{end}]$}
+  \State $L.\texttt{addEntry}(e)$ \Comment{mirror direct entries to primary}
+\EndFor
+\State $R \leftarrow \texttt{getLedgerActivities}(L.\text{loanId},\;
+       \texttt{effectiveAt} \geq a.\texttt{effectiveAt},\;
+       \texttt{createdAt} \leq \text{clock.now})$
+  \Comment{sorted by effectiveAt asc}
+\State $\texttt{APPLY-LEDGER-ACTIVITIES}(\text{fork},\,R,\,\text{clock},\,\text{ctx})$
+  \Comment{recursive}
+\State $\texttt{SYNC}(L,\,\text{fork},\,\text{clock.now},\,
+       a.\texttt{createdAt},\,p)$
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Note on recursion.}
+Step~7 may itself encounter a backdated activity relative to
+$\text{fork}$, triggering a nested invocation of
+Algorithm~\ref{alg:backdated}. Idempotency keys applied at Step~5
+(the \texttt{addEntry} call inside the For loop) ensure that entries
+generated across recursion depths are not duplicated.
+
+\paragraph{Complexity.}
+Let $p$ be the fork-prefix size (number of preserved entries) and $m$
+the number of replay activities. The fork copy is $O(p)$. Replay
+processes $m$ activities, each $O(1)$ for direct entries; temporal
+activities with waterfall spread are $O(c)$ where $c$ is the number of
+balance components (constant in practice, $c = 4$). Reconciliation is
+$O(m)$ with one pass per distinct source activity. Sorting the
+replay activities at Step~6 dominates: total complexity per backdated
+event is
+$O(p + m \log m)$.
+
+\subsection{Algorithm 2: Compensation + Retroactive Fork-and-Sync for Reversals}
+\label{sec:alg-reversal}
+
+\textbf{Precondition:} A reversal activity~$r$ identifies a target
+activity~$t$ to be reversed. All entries attributed to~$t$ exist in
+the primary ledger.
+
+\textbf{Postcondition:} The primary ledger contains a compensation
+entry immediately negating $t$'s impact, plus individually traced
+adjustments for all downstream derived effects, with no record of
+$t$'s existence removed from the ledger.
+
+\begin{algorithm}[H]
+\caption{Compensation + Retroactive Fork-and-Sync for a Reversal}
+\label{alg:reversal}
+\begin{algorithmic}[1]
+\Require Primary ledger $L$, reversal activity $r$, clock, context ctx
+\Ensure $L$ updated with compensation entry and per-source-activity
+        downstream adjustment entries
+\State $\Delta \leftarrow L.\texttt{calculateTotalImpact}(r.\text{targetType},\,r.\text{targetId})$
+\State $\text{comp} \leftarrow \texttt{buildEntry}(\text{change} =
+       {-}\Delta,\; \text{balance} = L.\text{currentBalance} - \Delta,\;
+       \text{type} = \text{``Reversal''},\; \text{source} =
+       (r.\text{targetType},\,r.\text{targetId}),\; \ldots)$
+\State $L.\texttt{addEntry}(\text{comp})$
+  \Comment{immediately corrects current balance}
+\State $\text{fork} \leftarrow L.\texttt{rollbackToEntryBefore}(r.\text{targetType},\,r.\text{targetId})$
+\State $p \leftarrow |\text{fork.entries}|$
+\State $R \leftarrow \texttt{getLedgerActivities}(L.\text{loanId},\;
+       \texttt{createdAt} > \text{originalActivity}(r.\text{targetId}).\texttt{createdAt},\;
+       \texttt{createdAt} \leq \text{clock.now})$
+  \Comment{excluding $r.\text{targetId}$; sorted by effectiveAt asc}
+\State $\texttt{APPLY-LEDGER-ACTIVITIES}(\text{fork},\,R,\,\text{clock},\,\text{ctx})$
+  \Comment{recursive}
+\State $\texttt{SYNC}(L,\,\text{fork},\,\text{clock.now},\,
+       r.\texttt{createdAt},\,p)$
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Exclusion invariant.}
+The reversed target activity is excluded from replay at Step~6. This
+prevents infinite recursion and ensures the fork represents the world
+``as if the reversed activity never happened.''
+
+\paragraph{Compensation semantics.}
+The compensation entry at Step~3 immediately corrects the primary
+ledger's current balance without waiting for reconciliation. This is
+essential for balance queries that may occur between the compensation
+step and the completion of replay.
+
+\subsection{Algorithm 3: Differential Impact Reconciliation (SYNC)}
+\label{sec:alg-sync}
+
+This sub-routine is shared by Algorithms~\ref{alg:backdated}
+and~\ref{alg:reversal}. It reconciles per-activity impacts between the
+retroactive fork and the primary ledger, generating one adjustment entry
+per divergent source activity and zero entries for activities whose
+balance impact did not change.
+
+\begin{algorithm}[H]
+\caption{Differential Impact Reconciliation (SYNC)}
+\label{alg:sync}
+\begin{algorithmic}[1]
+\Require Primary ledger $L$, retroactive fork $F$, current time $\tau$,
+         adjustment effective date $t_{\text{adj}}$, fork index $p$
+\Ensure $L$ updated with one adjustment entry per divergent source activity
+\State $F_{\text{entries}} \leftarrow F.\text{entries sorted by effectiveAt}$
+\State $L_{\text{entries}} \leftarrow L.\text{entries sorted by effectiveAt}$
+\If{$F_{\text{entries}}$ is empty \textbf{or} $L_{\text{entries}}$ is empty}
+  \State \Return
+\EndIf
+\State $\text{processed} \leftarrow \{\}$
+\For{$i$ from $p$ to $|F_{\text{entries}}| - 1$}
+  \State $e_F \leftarrow F_{\text{entries}}[i]$
+  \State $\kappa \leftarrow (e_F.\texttt{sourceLedgerActivityType},\;
+         e_F.\texttt{sourceLedgerActivityId})$
+  \If{$\kappa \in \text{processed}$}
+    \State \textbf{continue}
+  \EndIf
+  \State $\delta_L \leftarrow L.\texttt{calculateTotalImpact}(\kappa)$
+  \If{$\delta_L = \text{null}$}
+    \State $L.\texttt{addEntry}(e_F)$ \Comment{net-new activity}
+  \Else
+    \State $\delta_F \leftarrow F.\texttt{calculateTotalImpact}(\kappa)$
+    \If{$\delta_F \neq \delta_L$}
+      \State $\Delta \leftarrow \delta_F - \delta_L$
+      \State $\text{adj} \leftarrow \texttt{buildAdjustmentEntry}(
+             \text{change} = \Delta,\;
+             \text{balance} = L.\text{currentBalance} + \Delta,\;
+             \text{source} = \kappa,\;
+             \texttt{effectiveAt} = t_{\text{adj}},\;
+             \texttt{createdAt} = \tau)$
+      \State $L.\texttt{addEntry}(\text{adj})$
+    \EndIf
+  \EndIf
+  \State $\text{processed}.\text{add}(\kappa)$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Key properties.}
+\begin{itemize}
+  \item Zero-delta activities produce no adjustment entry
+        (``skip-if-equal'' guarantee).
+  \item Each source activity is processed exactly once per
+        reconciliation round (the \texttt{processed} set).
+  \item Every adjustment entry carries full source-activity attribution,
+        satisfying R3.
+  \item The algorithm is $O(k)$ in the number of post-fork entries.
+\end{itemize}
+
+\subsection{Algorithm 4: Idempotent Entry Addition}
+\label{sec:alg-idempotent}
+
+\begin{algorithm}[H]
+\caption{Idempotent Entry Addition}
+\label{alg:addentry}
+\begin{algorithmic}[1]
+\Require Ledger $L$, entry $e$
+\Ensure $L$ contains $e'$ (clone of $e$ with recomputed running balances); unchanged if $e$ was already present (duplicate)
+\State $e' \leftarrow \texttt{clone}(e)$
+\State $e'.\texttt{updateRunningBalances}(L.\texttt{currentBalance})$
+\State $\kappa \leftarrow \texttt{idempotencyKey}(e')$
+\If{any existing entry in $L$ has key $\kappa$}
+  \State \Return \Comment{silent skip -- duplicate}
+\EndIf
+\State $L.\text{entries}.\texttt{append}(e')$
+\end{algorithmic}
+\end{algorithm}
+
+The composite idempotency key is a deterministic function of
+(\texttt{loanId}, \texttt{entryId}, \texttt{entryType},
+\texttt{sourceLedgerActivityType}, \texttt{sourceLedgerActivityId},
+\texttt{effectiveAt}). This key is stable across invocations: revisiting
+the same activity during a nested retrospective cycle always produces
+the same key, preventing duplication without relying on sequence numbers.
+
+% =========================================================================
+\section{Implementation}
+\label{sec:implementation}
+% =========================================================================
+
+The reference implementation uses Java~21 with the Quarkus framework
+(version 3.11) for the server-side service layer. Persistence uses
+Hibernate/Panache with H2 (test/development) and PostgreSQL (production).
+Monetary arithmetic uses the JavaMoney/Moneta library to avoid
+floating-point precision loss on financial quantities; balance components
+are stored as arbitrary-precision \texttt{NUMERIC} decimal values in the
+database and manipulated via \texttt{MonetaryAmount} objects at runtime.
+
+Key design decisions:
+
+\begin{itemize}
+  \item \textbf{Hexagonal architecture.}~The core algorithmic logic
+        (\texttt{LedgerService}, \texttt{Ledger}, \texttt{LedgerActivity}
+        hierarchy) contains no repository or framework dependencies.
+        Repository interfaces are injected, enabling deterministic unit
+        testing with in-memory ledger objects.
+  \item \textbf{Injected temporal context.}~\texttt{TemporalActivityContext}
+        supplies interest-rate schedules and day-count conventions as
+        constructor parameters rather than runtime lookups. This is
+        required for deterministic replay: a \texttt{StartOfDay} activity
+        replayed on a retroactive fork must produce the same interest
+        amount as it would have in forward processing.
+  \item \textbf{Virtual clock injection.}~\texttt{LedgerClock} is passed
+        as a parameter, not obtained from \texttt{System.currentTimeMillis()}.
+        This decouples algorithmic correctness from wall-clock time and
+        makes all processing paths directly unit-testable~\cite{feathers2004}.
+  \item \textbf{Activity factory.}~A \texttt{LedgerActivityFactory}
+        converts \texttt{GeneralLedgerActivity} persistence objects into
+        typed \texttt{LedgerActivity} instances, isolating the
+        persistence model from the domain model.
+\end{itemize}
+
+The implementation, including all test fixtures and integration tests,
+is publicly available at
+\url{https://github.com/v1bh0r/precise-ledger-pro}.
+
+% =========================================================================
+\section{Evaluation}
+\label{sec:evaluation}
+% =========================================================================
+
+\subsection{Scenario Design}
+
+We evaluate both the correctness and traceability properties of the
+fork-and-sync approach against a conventional grouped-adjustment ledger
+through a canonical nine-activity loan scenario. The loan has an initial
+principal of \$1,000,000 with an annual interest rate of 10.0\%,
+computed on an actual/365 day-count basis (daily rate: \$273.97).
+
+\begin{table}[h!]
+\centering
+\caption{Nine-activity evaluation scenario.}
+\label{tab:scenario}
+\begin{tabular}{clrl}
+  \toprule
+  \textbf{Step} & \textbf{Activity} & \textbf{Amount} & \textbf{Effective Date} \\
+  \midrule
+  1 & Disbursal              & \$1,000,000 & 2024-03-01 \\
+  2 & SOD (interest accrual) & ---         & 2024-03-02 \\
+  3 & SOD (interest accrual) & ---         & 2024-03-03 \\
+  4 & Payment \#234          & \$10,000    & 2024-03-03 \\
+  5 & SOD (interest accrual) & ---         & 2024-03-04 \\
+  6 & SOD (interest accrual) & ---         & 2024-03-05 \\
+  7 & Payment \#456          & \$5,000     & 2024-03-05 \\
+  8 & Reversal of \#234      & ---         & 2024-03-05 \\
+  9 & Backdated Payment \#768 & \$4,000   & 2024-03-03 (recv.\ 2024-03-05) \\
+  \bottomrule
+\end{tabular}
+\end{table}
+
+Steps 1--7 are in-order activities processed identically by both
+systems. Steps 8 and~9 trigger the retroactive paths.
+
+\paragraph{Conventional ledger baseline.}
+Our comparative baseline follows typical loan servicing practice:
+reversals are handled by appending a compensation entry plus a single
+grouped downstream adjustment; backdated payments are appended against
+current processing-time balances. It correctly maintains running
+balances but represents multiple downstream corrections as a single
+entry.
+
+\subsection{Comparison at Activity 8 (Reversal)}
+
+After processing steps 1--7, the primary ledger for both systems holds
+7~entries with identical balances: principal \$990,547.24; interest
+\$0.00 (fully consumed by Payment~\#456).
+
+\paragraph{Conventional ledger (step~8).}
+Appends a compensation entry ($+$\$9,452.05 principal,
+$+$\$547.95 interest) followed by a \emph{single grouped adjustment}
+($+$\$3.30 principal, \$0.00 net interest) covering three distinct
+downstream corrections: (i)~SOD-304 interest recalculation,
+(ii)~SOD-305 interest recalculation, and (iii)~Payment~\#456
+re-allocation. Total entries after reversal: \textbf{9}.
+
+\paragraph{Fork-and-sync ledger (step~8).}
+Applies the same compensation entry. The fork-replay exposes that
+SOD-304 and SOD-305 each recalculated on a higher principal (restored
+to \$1,000,000) and Payment~\#456 required re-allocation with a higher
+interest base. Three individually traced adjustment entries are
+appended:
+\begin{enumerate}
+  \item Adjustment for SOD-20240304: $\Delta\text{interest} = +\$1.65$
+        (interest: \$271.38 $\to$ \$273.03)
+  \item Adjustment for SOD-20240305: $\Delta\text{interest} = +\$1.65$
+        (same recalculation)
+  \item Adjustment for Transaction-456: $\Delta\text{principal} = +\$3.30$,
+        $\Delta\text{interest} = -\$3.30$ (re-allocation to higher
+        interest base)
+\end{enumerate}
+Total entries after reversal: \textbf{11}. Every correction row names
+the entry it corrects; the ledger is readable top-to-bottom with no
+opaque rows.
+
+\subsection{Comparison at Activity 9 (Backdated Payment)}
+
+\paragraph{Conventional ledger (step~9).}
+The \$4,000 payment is applied against the current processing-time
+interest balance of \$547.95. Allocation: \$547.95 to interest,
+\$3,452.05 to principal (one payment entry). The revised principal
+lowers the basis for Payment~\#456's prior allocation, so the system
+appends one additional grouped re-allocation adjustment entry.
+Total: 9 + 2 = \textbf{11} entries.
+
+\paragraph{Fork-and-sync ledger (step~9).}
+The payment is inserted at its economic date of 2024-03-03. At that
+date, the interest balance (per the corrected retroactive fork) is
+\$547.94. Allocation: \$547.94 to interest, \$3,452.06 to principal.
+The \$0.01 difference is not drift; it reflects the economically
+correct interest basis at the payment's effective date (R1). After
+replay, downstream SODs (March~4 and~5) recalculate on the lower
+post-payment principal. The delta per SOD is less than \$0.01 per day
+when rounded, so those two SOD adjustment entries are suppressed
+(zero-delta suppression). Payment~\#456's re-allocation, however,
+changes non-trivially against the revised interest basis, generating
+one additional adjustment entry. Total: 11 + 2 = \textbf{13} entries.
+
+\subsection{Summary Results}
+
+\begin{table}[h!]
+\centering
+\caption{Comparison summary after all nine activities.}
+\label{tab:summary}
+\begin{tabularx}{\linewidth}{Xcc}
+  \toprule
+  \textbf{Metric} & \textbf{Conventional} & \textbf{Fork-and-Sync} \\
+  \midrule
+  Final principal balance     & \$987,095.18 & \$987,095.19 \\
+  Final interest balance      & \$0.00       & \$0.00 \\
+  Total entries (all 9 steps) & 11           & 13 \\
+  Downstream correction entries (steps 8\,\&\,9) & 2 grouped  & 4 individually traced \\
+  Entry-level traceability    & No           & Yes \\
+  Retroactive composability   & Fragile      & Yes \\
+  Grouped-entry decomposition & Not possible & Not applicable \\
+  \bottomrule
+\end{tabularx}
+\end{table}
+
+The fork-and-sync approach generates two additional entries (11 vs.\ 13)
+as the cost of full traceability. This is $O(k)$ entry overhead per
+retroactive event---proportional to the number of divergent downstream
+activities~$k$, not to the total ledger length~$n$. In practice $k$ is
+a small constant (Section~\ref{sec:discussion}), making the overhead
+effectively bounded and predictable.
+
+\subsection{Retroactive Composability}
+
+Consider a hypothetical tenth activity: a second backdated event at
+2024-03-04. With grouped corrections, the conventional engine must
+reason about adjusting-an-adjustment: the grouped $+\$3.30$ entry from
+step~8 becomes the target of further correction, and its decomposition
+into three original effects (SOD-304, SOD-305, Payment~\#456) cannot be
+recovered from the ledger alone. Full re-derivation from the primary
+activity log is required.
+
+With per-entry traced corrections, each prior adjustment row identifies
+its exact source activity. The fork at 2024-03-04 simply re-encounters
+these source activities during replay, and the
+\texttt{calculateTotalImpact} / \textsc{Sync} protocol naturally
+converges to the new correct state. No special-case decomposition logic
+is needed.
+
+% =========================================================================
+\section{Discussion}
+\label{sec:discussion}
+% =========================================================================
+
+\subsection{Entry Count Growth}
+
+The fork-and-sync approach generates strictly more ledger entries than
+the grouped-adjustment approach---$k$~individual adjustment rows versus
+1 grouped row, where $k$ is the number of downstream activities with
+divergent impacts. In practice, $k$ is small (typically 3--10 for a
+standard loan ledger), so growth is bounded and predictable.
+
+\subsection{Zero-Delta Suppression}
+
+The skip-if-equal condition in Algorithm~\ref{alg:sync} (Step~15) is
+important for practical usability. Without it, every activity after the
+fork point would produce an adjustment entry, inflating the ledger by
+$O(n')$ entries per retroactive event (where $n'$ is the total number of
+replay activities after the fork point). With suppression, only the $k$
+activities with genuine downstream impact (typically those that use the
+running balance in their computation, such as temporal accruals) produce
+entries. Allocation-fixed activities (disbursals, static-fee charges)
+almost never diverge after a principal change.
+
+\subsection{Virtual Clock and Determinism}
+
+The \texttt{LedgerClock} design is a form of test-seam
+injection~\cite{feathers2004} applied at the production-logic level
+rather than only in tests. By parameterizing all time-sensitive
+computations on an external clock object, the system achieves
+reproducibility: replaying the same activity sequence with the same
+clock configuration always produces the same ledger. This is a
+prerequisite for regression testing of retroactive paths, which are
+notoriously difficult to test with wall-clock-coupled logic.
+
+\subsection{Limitations}
+
+\begin{itemize}
+  \item \textbf{Concurrent retroactive events.}~The current design
+        assumes serial application of activities to a given ledger.
+        Concurrent retroactive events targeting the same ledger require
+        external serialization (e.g., optimistic locking on the ledger
+        object) to prevent lost-update anomalies~\cite{grayreuter1992}.
+  \item \textbf{Infinite recursion guard.}~The reversal algorithm
+        excludes the target activity from replay explicitly. Incorrect
+        activity-ID matching or missing exclusion in a derived
+        implementation would cause unbounded recursion. The system
+        mitigates this via exhaustive fixture-based tests.
+  \item \textbf{Query performance.}~\texttt{calculateTotalImpact}
+        performs a linear scan over ledger entries filtered by source
+        activity. For long ledgers, a secondary composite index on
+        (\texttt{loanId}, \texttt{sourceLedgerActivityType},
+        \texttt{sourceLedgerActivityId}) is required to maintain
+        $O(\log n)$ query cost~\cite{graefe2011}.
+  \item \textbf{Single-entry model.}~The current model does not enforce
+        double-entry bookkeeping constraints (debits~=~credits).
+        Extension to double-entry contra-account ledgers is future work.
+\end{itemize}
+
+\subsection{Future Work}
+
+Future directions include: (i)~a formal proof of convergence and
+correctness for recursively nested retroactive events;
+(ii)~benchmarking on synthetic ledgers of 10,000--100,000 entries to
+validate the $O(p + m \log m)$ empirical cost model;
+(iii)~extension to multi-party ledgers where a retroactive event on one
+party's ledger triggers cascading reconciliation to a counterparty
+ledger.
+
+% =========================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+% =========================================================================
+
+We presented a fork-and-sync architecture for financial ledger systems
+that handles both out-of-order (backdated) activities and reversals
+while satisfying all four requirements: correctness, audit immutability,
+entry-level traceability, and retroactive composability.
+The key contribution is Algorithm~\ref{alg:sync} (\textsc{Sync}), which
+reconciles per-activity balance impacts between a retroactive fork and
+the primary ledger, emitting one individually source-attributed
+adjustment entry per divergent activity rather than a single grouped
+correction. A virtual ledger clock ensures deterministic replay of
+time-dependent derived calculations. Evaluation on a nine-activity loan
+scenario demonstrates that the approach produces an auditable,
+row-by-row explainable ledger with a bounded entry-count overhead of
+$O(k)$ per retroactive event, where $k$ is the number of activities
+with genuine downstream balance impact. A complete reference
+implementation is publicly available. We believe this approach is
+directly applicable to any financial system that must accommodate
+retroactive corrections over a sequence of derived calculations,
+including general ledger systems, derivative position accounts, and
+insurance claim ledgers.
+
+% =========================================================================
+\section*{Acknowledgements}
+% =========================================================================
+
+The authors thank the open-source contributors to the Quarkus,
+Hibernate, and JavaMoney/Moneta projects, whose frameworks underpin the
+reference implementation.
+
+% =========================================================================
+\begin{thebibliography}{99}
+
+\bibitem{fowler2005}
+M.~Fowler, ``Event Sourcing,'' 2005.
+\url{https://martinfowler.com/eaaDev/EventSourcing.html}.
+
+\bibitem{snodgrass1999}
+R.~T.~Snodgrass,
+\textit{Developing Time-Oriented Database Applications in SQL}.
+Morgan Kaufmann, 1999.
+
+\bibitem{jensen1994}
+C.~S.~Jensen, J.~Clifford, R.~Elmasri, S.~K.~Gadia, P.~Hayes,
+and S.~Jajodia,
+``A Glossary of Temporal Database Concepts,''
+\textit{ACM SIGMOD Record}, vol.~23, no.~1, pp.~52--64, 1994.
+
+\bibitem{garciamolinasalem1987}
+H.~Garcia-Molina and K.~Salem,
+``Sagas,''
+in \textit{Proc. ACM SIGMOD International Conference on Management of Data},
+pp.~249--259, 1987.
+
+\bibitem{bernsteingoodman1981}
+P.~A.~Bernstein and N.~Goodman,
+``Concurrency Control in Distributed Database Systems,''
+\textit{ACM Computing Surveys}, vol.~13, no.~2, pp.~185--221, 1981.
+
+\bibitem{grayreuter1992}
+J.~Gray and A.~Reuter,
+\textit{Transaction Processing: Concepts and Techniques}.
+Morgan Kaufmann, 1992.
+
+\bibitem{feathers2004}
+M.~C.~Feathers,
+\textit{Working Effectively with Legacy Code}.
+Prentice Hall, 2004.
+
+\bibitem{graefe2011}
+G.~Graefe,
+``Modern B-Tree Techniques,''
+\textit{Foundations and Trends in Databases}, vol.~3, no.~4,
+pp.~203--402, 2011.
+
+\end{thebibliography}
+
+% =========================================================================
+\appendix
+% =========================================================================
+
+\section{Test Fixture Summary}
+
+The reference implementation includes fixture-based integration tests
+that encode final ledger expectations as CSV files. The primary fixture
+for the nine-activity evaluation scenario is:
+
+\begin{lstlisting}
+src/test/resources/data/ledger/service/
+  applyLedgerActivities_test1/
+    apply_ledger_activities_test1_expectation.csv
+\end{lstlisting}
+
+Each row encodes a full ledger entry expectation including entry type,
+source activity ID, incremental and running balances for all four
+components. These fixtures serve as executable specifications equivalent
+to the comparison in Table~\ref{tab:summary} and are verified on every
+CI run.
+
+\section{ACM Computing Classification System (CCS 2012)}
+\label{app:ccs}
+
+\begin{itemize}
+  \item \textbf{Primary:} Information systems $\to$ Transaction management
+  \item \textbf{Secondary:} Information systems $\to$ Data streams;
+        Software and its engineering $\to$ Software reliability
+\end{itemize}
+
+\noindent\textit{CCS format:}
+\texttt{Information systems\textasciitilde Transaction management;
+Information systems\textasciitilde Data streams;
+Software and its engineering\textasciitilde Software reliability}
+
+\end{document}
