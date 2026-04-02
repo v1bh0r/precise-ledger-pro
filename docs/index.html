@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Precise Ledger Pro — The Java Ledger SDK That Is Correct by Construction</title>
-  <meta name="description" content="A perpetual-licensed Java SDK that guarantees loan ledger correctness through reversals, backdated entries, and out-of-order events. Self-hosted, source code included." />
+  <title>Precise Ledger Pro — The Ledger SDK That Is Correct by Construction</title>
+  <meta name="description" content="A perpetual-licensed ledger SDK — available in Java and Haskell — that guarantees loan ledger correctness through reversals, backdated entries, and out-of-order events. Self-hosted, source code included." />
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -85,7 +85,7 @@
   <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
     <a href="#" class="flex items-center gap-2">
       <span class="mono text-brand-400 font-bold text-lg tracking-tight">PreciseLedger<span class="text-white">Pro</span></span>
-      <span class="badge bg-brand-500/20 text-brand-400 border border-brand-500/25">SDK</span>
+      <span class="badge bg-brand-500/20 text-brand-400 border border-brand-500/25">Java + Haskell</span>
     </a>
     <div class="hidden md:flex items-center gap-8 text-sm">
       <a href="#capabilities" class="text-slate-400 hover:text-brand-400 transition-colors">Capabilities</a>
@@ -105,10 +105,10 @@
   <div class="relative max-w-4xl mx-auto">
     <div class="inline-flex items-center gap-2 mono text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 px-4 py-2 rounded-full mb-8">
       <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block"></span>
-      Perpetual License &middot; Self-Hosted &middot; Source Code Included
+      Perpetual License &middot; Self-Hosted &middot; Java + Haskell
     </div>
     <h1 class="text-5xl md:text-6xl font-extrabold leading-[1.1] mb-6 tracking-tight">
-      The Java Ledger SDK<br/>
+      The Ledger SDK<br/>
       <span class="gradient-text">Correct by Construction</span>
     </h1>
     <p class="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-4">
@@ -116,11 +116,45 @@
       and out-of-order events &mdash; guaranteed by the engine, not by careful coding.
     </p>
     <p class="text-sm text-slate-500 mb-10 mono">
-      Java 21 &middot; Quarkus / Spring compatible &middot; JavaMoney 256-bit precision &middot; 53 tested invariants
+      Java&nbsp;21 (53 invariants) &middot; Haskell GHC&nbsp;9.6 (64 invariants) &middot; Quarkus&nbsp;/&nbsp;Spring compatible &middot; JavaMoney precision
     </p>
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
       <a href="demo.html" class="btn-primary">View Live Demo</a>
       <a href="#pricing" class="btn-outline">Get a License</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- HASKELL CALLOUT -->
+<!-- ============================================================ -->
+<section class="max-w-6xl mx-auto px-6 pt-0 pb-8">
+  <div class="card p-7 border-brand-500/20" style="background:linear-gradient(135deg,rgba(56,189,248,0.04) 0%,rgba(129,140,248,0.04) 100%)">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="text-3xl select-none" aria-hidden="true">&#955;</div>
+      <div class="flex-1">
+        <div class="flex items-center gap-3 mb-1">
+          <h3 class="font-semibold text-base">Haskell Reference Implementation</h3>
+          <span class="badge bg-brand-500/20 text-brand-400 border border-brand-500/25">NEW</span>
+        </div>
+        <p class="text-slate-400 text-sm leading-relaxed">
+          The same rollback&#8209;replay&#8209;sync algorithm is independently implemented in pure Haskell (GHC&nbsp;9.6.4) and verified with <strong class="text-white">64 passing invariants</strong>. Identical test outcomes in two type&#8209;systems prove the logic is correct by construction&nbsp;&mdash; not by accident of runtime.
+        </p>
+      </div>
+      <div class="flex sm:flex-col gap-6 sm:gap-3 text-center shrink-0">
+        <div>
+          <div class="mono text-brand-400 font-bold text-lg">64</div>
+          <div class="text-slate-500 text-xs">invariants</div>
+        </div>
+        <div>
+          <div class="mono text-brand-400 font-bold text-lg">2</div>
+          <div class="text-slate-500 text-xs">languages</div>
+        </div>
+        <div>
+          <div class="mono text-brand-400 font-bold text-lg">1</div>
+          <div class="text-slate-500 text-xs">algorithm</div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -272,13 +306,14 @@
 <!-- ============================================================ -->
 <section id="integration" class="max-w-6xl mx-auto px-6 py-24">
   <p class="section-label mb-4">// integration</p>
-  <h2 class="text-3xl md:text-4xl font-bold mb-14">Drop into your Java stack in minutes</h2>
+  <h2 class="text-3xl md:text-4xl font-bold mb-14">Drop into your stack in minutes</h2>
 
   <div class="grid md:grid-cols-2 gap-8" x-data="{ tab: 'maven' }">
     <div>
       <div class="flex gap-2 mb-4">
         <button @click="tab='maven'" :class="tab==='maven' ? 'bg-brand-500/20 text-brand-400 border-brand-500/30' : 'text-slate-500 border-transparent'" class="badge border px-4 py-1.5 cursor-pointer transition-colors">pom.xml</button>
         <button @click="tab='java'" :class="tab==='java' ? 'bg-brand-500/20 text-brand-400 border-brand-500/30' : 'text-slate-500 border-transparent'" class="badge border px-4 py-1.5 cursor-pointer transition-colors">Java</button>
+        <button @click="tab='haskell'" :class="tab==='haskell' ? 'bg-brand-500/20 text-brand-400 border-brand-500/30' : 'text-slate-500 border-transparent'" class="badge border px-4 py-1.5 cursor-pointer transition-colors">Haskell</button>
       </div>
 
       <div x-show="tab==='maven'" class="code-block p-5 overflow-x-auto text-slate-300">
@@ -302,6 +337,21 @@ ledgerService.<span class="text-brand-400">applyLedgerActivity</span>(
 <span class="text-slate-500">// That's it. Balances are correct.</span>
 <span class="text-purple-400">var</span> balance = ledger.<span class="text-green-400">getCurrentBalance</span>();
 <span class="text-slate-500">// → Balance[principal=USD 991,000.00, interest=...]</span></code></pre>
+      </div>
+
+      <div x-show="tab==='haskell'" x-cloak class="code-block p-5 overflow-x-auto text-slate-300">
+<pre><code><span class="text-slate-500">-- precise-ledger.cabal</span>
+<span class="text-yellow-400">build-depends:</span>  precise-ledger ^>= 1.0
+
+<span class="text-slate-500">-- Apply activities — same engine, pure functional</span>
+<span class="text-purple-400">let</span> activities = [disbursal, payment, reversal]
+    (ledger, _) = <span class="text-brand-400">applyLedgerActivities</span>
+                    lookup ctx activities
+                    emptyLedger defaultClock
+
+<span class="text-slate-500">-- Balances are correct. No IO, no side effects.</span>
+<span class="text-purple-400">let</span> bal = <span class="text-green-400">currentBalance</span> ledger
+<span class="text-slate-500">-- → Balance { principal = 991000.00, interest = 0 }</span></code></pre>
       </div>
     </div>
 
@@ -398,6 +448,16 @@ ledgerService.<span class="text-brand-400">applyLedgerActivity</span>(
       </button>
       <div x-show="open===2" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
         The Business plan includes full source code access. This is essential for financial institutions that need to audit third-party code, maintain escrow copies, or make customisations. The Starter plan ships as a compiled JAR with full Javadoc and the acceptance test suite.
+      </div>
+    </div>
+
+    <div class="card overflow-hidden">
+      <button @click="open = open === 6 ? null : 6" class="w-full text-left px-6 py-4 flex items-center justify-between">
+        <span class="font-medium">Is there a Haskell implementation?</span>
+        <span class="text-brand-400 transition-transform" :class="open===6 && 'rotate-45'">+</span>
+      </button>
+      <div x-show="open===6" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
+        Yes. The same rollback-replay-sync algorithm is independently implemented in pure Haskell (GHC 9.6.4) with 64 verified invariants. The Haskell port ships as a Cabal library (<code class="mono text-brand-400">precise-ledger</code>) and is included in the Business plan source bundle. It serves as both a formal cross-language verification of the algorithm and a production-ready option for Haskell-native teams.
       </div>
     </div>
 
