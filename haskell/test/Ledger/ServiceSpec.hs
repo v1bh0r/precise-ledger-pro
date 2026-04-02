@@ -19,6 +19,7 @@ spec = describe "Ledger.Service" $ do
       t1      = LocalTime (fromGregorian 2024 3 1) midnight
       t2      = LocalTime (fromGregorian 2024 3 2) midnight
       t3      = LocalTime (fromGregorian 2024 3 3) midnight
+      t4      = LocalTime (fromGregorian 2024 3 4) midnight
       emptyLedger = Ledger loanId zeroBalance [] "USD"
 
       -- No-op lookup: no activities returned for backdated/reversal replay.
@@ -66,9 +67,58 @@ spec = describe "Ledger.Service" $ do
           (ledger, _) = applyLedgerActivities noLookup ctx
                           [disbursal, sod] emptyLedger defaultClock
           bal = currentBalance ledger
-      -- Interest = 1,000,000 * 0.1 / 365 ≈ 273.97
-      abs (balInterest bal - 273.9726027397) < 0.01 `shouldBe` True
+      -- B2 fix: interest is rounded to 2 dp == 273.97 exactly
+      balInterest bal `shouldBe` 273.97
       balPrincipal bal `shouldBe` 1000000
+
+  ---------------------------------------------------------------------------
+  -- applyLedgerActivities — two-day interest accumulation
+  ---------------------------------------------------------------------------
+  describe "applyLedgerActivities — two-day interest" $ do
+    it "accumulates rounded interest over two SOD activities" $ do
+      let ctx = Just $ TemporalContext
+            { tcInterestRates = [InterestRate loanId 0.1 t0]
+            , tcDaysInYear    = 365
+            , tcCurrencyCode  = "USD"
+            }
+          disbursal = TransactionActivity loanId "Disbursal" "Transaction" "1"
+                        t1 t1 1000000 Credit "P"
+          sod1      = StartOfDayActivity loanId "SOD" "StartOfDay"
+                        (show t2) t2 t2
+          sod2      = StartOfDayActivity loanId "SOD" "StartOfDay"
+                        (show t4) t4 t4
+          (ledger, _) = applyLedgerActivities noLookup ctx
+                          [disbursal, sod1, sod2] emptyLedger defaultClock
+          interestBal = balInterest (currentBalance ledger)
+      -- Each SOD accrues 273.97; two days = 547.94
+      abs (interestBal - 547.94) < 0.02 `shouldBe` True
+
+  ---------------------------------------------------------------------------
+  -- B1: reversal dispatched via applyLedgerActivities pipeline
+  ---------------------------------------------------------------------------
+  describe "applyLedgerActivities — reversal pipeline (B1 fix)" $ do
+    it "reversal of a payment restores principal" $ do
+      let disbursal = TransactionActivity loanId "Disbursal" "Transaction" "1"
+                        t1 t1 1000000 Credit "P"
+          payment   = TransactionActivity loanId "Payment"   "Transaction" "2"
+                        t2 t2   10000 Debit  "P"
+          reversal  = ReversalActivityData loanId "Reversal" "Reversal" "rev1"
+                        t3 t3 "Transaction" "2"
+          -- For retro replay after the payment, return just the disbursal
+          lkup = noLookup
+            { lookupActivitiesCreatedSince = \_ _ _ _ -> [disbursal] }
+          (ledger, _) = applyLedgerActivities lkup Nothing
+                          [disbursal, payment, reversal] emptyLedger defaultClock
+      -- Compensation negates 10000 debit → principal back to 1,000,000
+      balPrincipal (currentBalance ledger) `shouldBe` 1000000
+
+    it "silently ignores a reversal of an unknown activity" $ do
+      let reversal = ReversalActivityData loanId "Reversal" "Reversal" "rev1"
+                       t3 t3 "Transaction" "no-such-id"
+          (ledger, _) = applyLedgerActivities noLookup Nothing
+                          [reversal] emptyLedger defaultClock
+      -- ledger must be unchanged — no crash, no phantom entries
+      currentBalance ledger `shouldBe` zeroBalance
 
   ---------------------------------------------------------------------------
   -- syncWithRetroactiveLedger

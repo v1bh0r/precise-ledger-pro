@@ -78,6 +78,11 @@ applyLedgerActivities lkup ctx activities ledger clock =
 -- | Apply a single activity.  If the activity is backdated relative to
 -- the ledger, it triggers the retroactive processing path.
 --
+-- B1 fix: @ReversalActivityData@ is pattern-matched first and dispatched
+-- to @reverseLedgerActivity@.  Previously the @otherwise@ branch called
+-- @generateEntries@ which is a no-op for reversals, silently dropping every
+-- reversal processed through @applyLedgerActivities@.
+--
 -- Translates @LedgerService.applyLedgerActivity()@.
 applyLedgerActivity
   :: ActivityLookup
@@ -86,12 +91,16 @@ applyLedgerActivity
   -> Ledger
   -> LedgerClock
   -> (Ledger, LedgerClock)
-applyLedgerActivity lkup ctx act ledger clock
-  | isBackdated act ledger = performBackdatedActivity lkup ctx act ledger clock
-  | otherwise =
-      let ledger' = generateEntries act ctx ledger
-          clock'  = advanceClock (laCreatedAt act) clock
-      in  (ledger', clock')
+applyLedgerActivity lkup ctx act ledger clock = case act of
+  ReversalActivityData{} ->
+    case reverseLedgerActivity lkup ctx act ledger clock of
+      Right result -> result
+      Left  _      -> (ledger, advanceClock (laCreatedAt act) clock)
+  _ | isBackdated act ledger -> performBackdatedActivity lkup ctx act ledger clock
+    | otherwise ->
+        let ledger' = generateEntries act ctx ledger
+            clock'  = advanceClock (laCreatedAt act) clock
+        in  (ledger', clock')
 
 -----------------------------------------------------------------------
 -- performBackdatedActivity
@@ -155,6 +164,8 @@ performBackdatedActivity lkup ctx act ledger clock =
 -- Translates @LedgerService.syncWithRetroactiveLedger()@.
 --
 -- Pure: produces a new primary ledger.
+-- Performance fix: O(n) list traversal replaces the previous O(n²)
+-- index-based access via @(retroEntries !! idx)@.
 syncWithRetroactiveLedger
   :: Ledger       -- ^ primary ledger
   -> Ledger       -- ^ retroactive ledger
@@ -164,65 +175,63 @@ syncWithRetroactiveLedger
   -> Ledger       -- ^ updated primary ledger
 syncWithRetroactiveLedger primary retro currentTime adjEffAt forkIdx
   | null retroEntries || null primaryEntries = primary
-  | otherwise = processEntries primary Set.empty forkIdx
+  | otherwise = processEntries (drop forkIdx retroEntries) primary Set.empty
   where
     retroEntries   = entriesSortedBy leEffectiveAt retro
     primaryEntries = entriesSortedBy leEffectiveAt primary
 
-    processEntries :: Ledger -> Set.Set String -> Int -> Ledger
-    processEntries prim processed idx
-      | idx >= length retroEntries = prim
-      | otherwise =
-          let retroEntry  = retroEntries !! idx
-              aType       = leSourceLedgerActivityType retroEntry
-              aId         = leSourceLedgerActivityId   retroEntry
-              aKey        = activityKey aType aId
-          in if Set.member aKey processed
-             then processEntries prim processed (idx + 1)
-             else
-              let primImpact  = calculateTotalImpact aType aId prim
-                  retroImpact = calculateTotalImpact aType aId retro
-              in case primImpact of
-               Nothing ->
-                 -- Activity not in primary: copy entry directly
-                 let prim' = addEntry retroEntry prim
-                 in  processEntries prim' (Set.insert aKey processed) (idx + 1)
-               Just pImpact ->
-                 let ri = case retroImpact of
-                            Just x  -> x
-                            Nothing -> zeroBalance
-                 in  if ri == pImpact
-                     -- Impacts match: no adjustment needed
-                     then processEntries prim (Set.insert aKey processed) (idx + 1)
-                     else
-                       -- Create an adjustment entry for the difference
-                       let diff    = subtractBalance ri pImpact
-                           curBal  = currentBalance prim
-                           adjEntry = LedgerEntry
-                             { leLoanId                   = ledgerLoanId prim
-                             , leEntryId                  = ""
-                             , leEntryType                = "Adjustment"
-                             , leAmount                   = totalAmount diff
-                             , lePrincipal                = balPrincipal diff
-                             , leInterest                 = balInterest  diff
-                             , leFee                      = balFee       diff
-                             , leExcess                   = balExcess    diff
-                             , lePrincipalBalance         = balPrincipal curBal
-                                                          + balPrincipal diff
-                             , leInterestBalance          = balInterest curBal
-                                                          + balInterest diff
-                             , leFeeBalance               = balFee curBal
-                                                          + balFee diff
-                             , leExcessBalance            = balExcess curBal
-                                                          + balExcess diff
-                             , leEffectiveAt              = adjEffAt
-                             , leCreatedAt                = currentTime
-                             , leSourceLedgerActivityType = aType
-                             , leSourceLedgerActivityId   = aId
-                             }
-                           prim' = addEntry adjEntry prim
-                       in  processEntries prim'
-                             (Set.insert aKey processed) (idx + 1)
+    processEntries :: [LedgerEntry] -> Ledger -> Set.Set String -> Ledger
+    processEntries [] prim _ = prim
+    processEntries (retroEntry : remaining) prim processed =
+      let aType       = leSourceLedgerActivityType retroEntry
+          aId         = leSourceLedgerActivityId   retroEntry
+          aKey        = activityKey aType aId
+      in if Set.member aKey processed
+         then processEntries remaining prim processed
+         else
+          let primImpact  = calculateTotalImpact aType aId prim
+              retroImpact = calculateTotalImpact aType aId retro
+          in case primImpact of
+           Nothing ->
+             -- Activity not in primary: copy entry directly
+             let prim' = addEntry retroEntry prim
+             in  processEntries remaining prim' (Set.insert aKey processed)
+           Just pImpact ->
+             let ri = case retroImpact of
+                        Just x  -> x
+                        Nothing -> zeroBalance
+             in  if ri == pImpact
+                 -- Impacts match: no adjustment needed
+                 then processEntries remaining prim (Set.insert aKey processed)
+                 else
+                   -- B2 fix: round adjustment component amounts
+                   let diff    = subtractBalance ri pImpact
+                       curBal  = currentBalance prim
+                       adjEntry = LedgerEntry
+                         { leLoanId                   = ledgerLoanId prim
+                         , leEntryId                  = ""
+                         , leEntryType                = "Adjustment"
+                         , leAmount                   = roundMoney (totalAmount diff)
+                         , lePrincipal                = roundMoney (balPrincipal diff)
+                         , leInterest                 = roundMoney (balInterest  diff)
+                         , leFee                      = roundMoney (balFee       diff)
+                         , leExcess                   = roundMoney (balExcess    diff)
+                         , lePrincipalBalance         = balPrincipal curBal
+                                                      + balPrincipal diff
+                         , leInterestBalance          = balInterest curBal
+                                                      + balInterest diff
+                         , leFeeBalance               = balFee curBal
+                                                      + balFee diff
+                         , leExcessBalance            = balExcess curBal
+                                                      + balExcess diff
+                         , leEffectiveAt              = adjEffAt
+                         , leCreatedAt                = currentTime
+                         , leSourceLedgerActivityType = aType
+                         , leSourceLedgerActivityId   = aId
+                         }
+                       prim' = addEntry adjEntry prim
+                   in  processEntries remaining prim'
+                         (Set.insert aKey processed)
 
 -----------------------------------------------------------------------
 -- reverseLedgerActivity
@@ -251,7 +260,7 @@ reverseLedgerActivity lkup ctx act ledger clock = case act of
            Left $ "Cannot reverse: no entries found for activity "
                ++ revType ++ "/" ++ revId
          Just impact ->
-           let -- Step 1: Compensation entry
+           let -- Step 1: Compensation entry (B2 fix: components rounded)
                negated = negateBalance impact
                curBal  = currentBalance ledger
                newBal  = addBalance curBal negated
@@ -259,11 +268,11 @@ reverseLedgerActivity lkup ctx act ledger clock = case act of
                  { leLoanId                   = ledgerLoanId ledger
                  , leEntryId                  = ""
                  , leEntryType                = "Reversal"
-                 , leAmount                   = totalAmount negated
-                 , lePrincipal                = balPrincipal negated
-                 , leInterest                 = balInterest  negated
-                 , leFee                      = balFee       negated
-                 , leExcess                   = balExcess    negated
+                 , leAmount                   = roundMoney (totalAmount negated)
+                 , lePrincipal                = roundMoney (balPrincipal negated)
+                 , leInterest                 = roundMoney (balInterest  negated)
+                 , leFee                      = roundMoney (balFee       negated)
+                 , leExcess                   = roundMoney (balExcess    negated)
                  , lePrincipalBalance         = balPrincipal newBal
                  , leInterestBalance          = balInterest  newBal
                  , leFeeBalance               = balFee       newBal

@@ -45,7 +45,8 @@ generateEntries activity ctx ledger = case activity of
 -- 1. Get current balance
 -- 2. Apply spread strategy to compute new balance
 -- 3. Compute the delta (change)
--- 4. Create and add a single entry
+-- 4. Round each component (B2 fix: matches Java's @Monetary.getDefaultRounding()@)
+-- 5. Create and add a single entry
 generateTransactionEntries :: LedgerActivity -> Ledger -> Ledger
 generateTransactionEntries act ledger =
   let bal     = currentBalance ledger
@@ -54,15 +55,19 @@ generateTransactionEntries act ledger =
                 else parseSpreadConfig (laSpread act)
       newBal  = applyComputationalSpread (laDirection act) config (laAmount act) bal
       change  = subtractBalance newBal bal
+      rp      = roundMoney (balPrincipal change)
+      ri      = roundMoney (balInterest  change)
+      rf      = roundMoney (balFee       change)
+      re      = roundMoney (balExcess    change)
       entry   = LedgerEntry
         { leLoanId                   = ledgerLoanId ledger
         , leEntryId                  = ""  -- assigned by persistence layer
         , leEntryType                = laCommonName act
-        , leAmount                   = laAmount act
-        , lePrincipal                = balPrincipal change
-        , leInterest                 = balInterest  change
-        , leFee                      = balFee       change
-        , leExcess                   = balExcess    change
+        , leAmount                   = roundMoney (laAmount act)
+        , lePrincipal                = rp
+        , leInterest                 = ri
+        , leFee                      = rf
+        , leExcess                   = re
         , lePrincipalBalance         = balPrincipal newBal
         , leInterestBalance          = balInterest  newBal
         , leFeeBalance               = balFee       newBal
@@ -82,12 +87,15 @@ generateTransactionEntries act ledger =
 --
 -- Calculates daily interest on the principal balance and creates an
 -- interest accrual entry.  Entry is skipped if interest is zero.
+-- B2 fix: interest is rounded to 2dp before storage, matching Java's
+-- @DailyInterestCalculator@ → @toDouble()@ → @Monetary.getDefaultRounding()@ path.
 generateStartOfDayEntries :: LedgerActivity -> Maybe TemporalContext -> Ledger -> Ledger
 generateStartOfDayEntries _act Nothing ledger = ledger  -- no context → no interest
 generateStartOfDayEntries act (Just ctx) ledger =
   let bal       = currentBalance ledger
       rate      = getApplicableRate (tcInterestRates ctx) (laEffectiveAt act)
-      interest  = calculateDailyInterest (balPrincipal bal) rate (tcDaysInYear ctx)
+      interest  = roundMoney
+                    (calculateDailyInterest (balPrincipal bal) rate (tcDaysInYear ctx))
   in if interest == 0
      then ledger
      else let entry = LedgerEntry

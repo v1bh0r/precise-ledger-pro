@@ -7,6 +7,7 @@ module Ledger.Types
     Money
   , Direction (..)
   , BalanceComponent (..)
+  , roundMoney
     -- * Balance
   , Balance (..)
   , zeroBalance
@@ -34,6 +35,11 @@ module Ledger.Types
 import Data.Time (LocalTime(..), fromGregorian, midnight)
 
 type Money = Double
+
+-- | Round a monetary amount to 2 decimal places using half-up rounding,
+-- matching Java's @Monetary.getDefaultRounding()@ (HALF_UP, currency default).
+roundMoney :: Money -> Money
+roundMoney x = fromIntegral (truncate (x * 100.0 + signum x * 0.5) :: Integer) / 100.0
 
 data Direction = Credit | Debit
   deriving (Eq, Show)

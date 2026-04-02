@@ -9,10 +9,14 @@ module Ledger.Entry
 import Ledger.Types
 
 -- | Compute the idempotency key for duplicate detection.
+--
+-- Key is based on semantic identity: (loanId, entryType, activityType,
+-- activityId, effectiveAt).  @leEntryId@ is excluded because it is always
+-- @""@ in the computation layer — it is assigned by the persistence layer
+-- and contributes nothing to uniqueness here (B3 fix).
 idempotencyKey :: LedgerEntry -> IdempotencyKey
 idempotencyKey e = concat
   [ leLoanId e, "-"
-  , leEntryId e, "-"
   , leEntryType e, "-"
   , leSourceLedgerActivityType e, "-"
   , leSourceLedgerActivityId e, "-"
@@ -37,12 +41,14 @@ entryBalanceChange e = Balance
   , balExcess    = leExcess    e
   }
 
--- | Recompute the running balance fields of an entry given
--- the current ledger balance before this entry.
+-- | Recompute the running balance fields of an entry given the current ledger
+-- balance before this entry.  Applies @roundMoney@ to every accumulated total,
+-- matching Java's @Monetary.getDefaultRounding()@ on @MonetaryAmount@ sums
+-- (B2 fix: previously un-rounded Double accumulated indefinitely).
 updateEntryBalances :: Balance -> LedgerEntry -> LedgerEntry
 updateEntryBalances cur e = e
-  { lePrincipalBalance = balPrincipal cur + lePrincipal e
-  , leInterestBalance  = balInterest  cur + leInterest  e
-  , leFeeBalance       = balFee       cur + leFee       e
-  , leExcessBalance    = balExcess    cur + leExcess    e
+  { lePrincipalBalance = roundMoney (balPrincipal cur + lePrincipal e)
+  , leInterestBalance  = roundMoney (balInterest  cur + leInterest  e)
+  , leFeeBalance       = roundMoney (balFee       cur + leFee       e)
+  , leExcessBalance    = roundMoney (balExcess    cur + leExcess    e)
   }
