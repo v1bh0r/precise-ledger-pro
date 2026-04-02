@@ -638,7 +638,9 @@ balance impact did not change.
         reconciliation round (the \texttt{processed} set).
   \item Every adjustment entry carries full source-activity attribution,
         satisfying R3.
-  \item The algorithm is $O(k)$ in the number of post-fork entries.
+  \item The algorithm runs in $O(m)$ time over post-fork source activities,
+        where $m$ is the number of distinct replay activities
+        (Section~\ref{sec:alg-backdated}).
 \end{itemize}
 
 \subsection{Algorithm 4: Idempotent Entry Addition}
@@ -872,8 +874,9 @@ standard loan ledger), so growth is bounded and predictable.
 The skip-if-equal condition in Algorithm~\ref{alg:sync} (Step~15) is
 important for practical usability. Without it, every activity after the
 fork point would produce an adjustment entry, inflating the ledger by
-$O(n')$ entries per retroactive event (where $n'$ is the total number of
-replay activities after the fork point). With suppression, only the $k$
+$O(m)$ entries per retroactive event (where $m$ is the total number of
+replay activities after the fork point, as defined in
+Section~\ref{sec:alg-backdated}). With suppression, only the $k$
 activities with genuine downstream impact (typically those that use the
 running balance in their computation, such as temporal accruals) produce
 entries. Allocation-fixed activities (disbursals, static-fee charges)

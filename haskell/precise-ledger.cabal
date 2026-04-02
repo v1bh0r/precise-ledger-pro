@@ -1,0 +1,45 @@
+cabal-version:      3.0
+name:               precise-ledger
+version:            0.1.0.0
+synopsis:           Precise Ledger Pro — loan ledger algorithms in Haskell
+license:            MIT
+build-type:         Simple
+
+library
+  exposed-modules:
+    Ledger.Types
+    Ledger.Balance
+    Ledger.Entry
+    Ledger.Core
+    Ledger.Spread
+    Ledger.Interest
+    Ledger.Activity
+    Ledger.Service
+  hs-source-dirs:   src
+  build-depends:
+    base        >= 4.17 && < 5,
+    containers  >= 0.6,
+    time        >= 1.12
+  default-language: Haskell2010
+  ghc-options:      -Wall -Wcompat
+
+test-suite tests
+  type:             exitcode-stdio-1.0
+  main-is:          Spec.hs
+  other-modules:
+    Ledger.BalanceSpec
+    Ledger.EntrySpec
+    Ledger.CoreSpec
+    Ledger.SpreadSpec
+    Ledger.InterestSpec
+    Ledger.ServiceSpec
+  hs-source-dirs:   test
+  build-depends:
+    base          >= 4.17 && < 5,
+    precise-ledger,
+    hspec         >= 2.10,
+    time          >= 1.12,
+    containers    >= 0.6
+  default-language: Haskell2010
+  ghc-options:      -Wall -Wcompat
+  build-tool-depends: hspec-discover:hspec-discover
