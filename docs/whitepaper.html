@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>White Paper — Getting Retroactive Corrections Right | Precise Ledger Pro</title>
+  <meta name="description" content="A position paper on financial ledger correctness: why existing approaches fail on reversals and backdated entries, who should use PreciseLedger Pro, and how it compares to alternatives." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          colors: {
+            navy:  { 950: '#060c18', 900: '#0a0f1e', 800: '#0d1526', 700: '#111d35', 600: '#162240' },
+            brand: { 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7' },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #0a0f1e; color: #e2e8f0; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(56,189,248,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56,189,248,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .card {
+      background: #0d1526; border: 1px solid rgba(56,189,248,0.1);
+      border-radius: 12px; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .badge {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+      padding: 2px 8px; border-radius: 4px; letter-spacing: 0.04em;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; font-weight: 600;
+      padding: 13px 30px; border-radius: 8px; display: inline-block;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-outline {
+      border: 1px solid rgba(56,189,248,0.4); color: #38bdf8; font-weight: 500;
+      padding: 12px 30px; border-radius: 8px; display: inline-block;
+      transition: all 0.15s;
+    }
+    .btn-outline:hover { border-color: #38bdf8; background: rgba(56,189,248,0.06); }
+    .section-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+      letter-spacing: 0.15em; text-transform: uppercase; color: #38bdf8;
+    }
+    .check::before  { content: "✓"; color: #4ade80; margin-right: 10px; font-weight: 700; }
+    .cross::before  { content: "✗"; color: #f87171; margin-right: 10px; font-weight: 700; }
+    .warn::before   { content: "△"; color: #fbbf24; margin-right: 10px; font-weight: 700; }
+    .req-card {
+      background: #0d1526; border-left: 3px solid #38bdf8;
+      border-radius: 0 12px 12px 0; padding: 20px 24px;
+    }
+    .req-card.red   { border-left-color: #f87171; }
+    .req-card.amber { border-left-color: #fbbf24; }
+    .req-card.green { border-left-color: #4ade80; }
+    .req-card.purple{ border-left-color: #a78bfa; }
+    .compare-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .compare-table th {
+      padding: 12px 16px; font-size: 0.78rem; font-weight: 600;
+      background: #060c18; border-bottom: 1px solid rgba(56,189,248,0.1);
+      text-align: left;
+    }
+    .compare-table th:not(:first-child) { text-align: center; }
+    .compare-table td {
+      padding: 11px 16px; font-size: 0.82rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+    }
+    .compare-table td:not(:first-child) { text-align: center; }
+    .compare-table tbody tr:hover { background: rgba(56,189,248,0.02); }
+    .compare-table .col-plp {
+      background: rgba(56,189,248,0.04);
+      border-left: 1px solid rgba(56,189,248,0.15);
+      border-right: 1px solid rgba(56,189,248,0.15);
+    }
+    .compare-table .col-plp-head {
+      background: rgba(56,189,248,0.08);
+      border-left: 1px solid rgba(56,189,248,0.2);
+      border-right: 1px solid rgba(56,189,248,0.2);
+      color: #38bdf8;
+    }
+    .tick  { color: #4ade80; font-size: 1rem; }
+    .cross-icon { color: #f87171; font-size: 1rem; }
+    .partial { color: #fbbf24; font-size: 0.75rem; }
+    .doc-body { max-width: 860px; margin: 0 auto; }
+    .doc-body h2 {
+      font-size: 1.55rem; font-weight: 700; color: #f1f5f9;
+      margin-top: 3.5rem; margin-bottom: 1rem;
+      padding-bottom: .6rem; border-bottom: 1px solid rgba(56,189,248,0.1);
+    }
+    .doc-body h3 { font-size: 1.1rem; font-weight: 600; color: #cbd5e1; margin-top: 2rem; margin-bottom: .6rem; }
+    .doc-body p  { color: #94a3b8; line-height: 1.8; margin-bottom: 1rem; }
+    .doc-body strong { color: #e2e8f0; }
+    .doc-body ul { margin-bottom: 1rem; }
+    .doc-body li { color: #94a3b8; line-height: 1.75; }
+    .callout {
+      background: rgba(56,189,248,0.05); border: 1px solid rgba(56,189,248,0.15);
+      border-radius: 10px; padding: 20px 24px; margin: 1.5rem 0;
+    }
+    .callout.amber {
+      background: rgba(251,191,36,0.05); border-color: rgba(251,191,36,0.15);
+    }
+    .callout.green {
+      background: rgba(74,222,128,0.05); border-color: rgba(74,222,128,0.15);
+    }
+    .footnote { font-size: 0.78rem; color: #475569; line-height: 1.6; }
+    .toc-link {
+      color: #64748b; text-decoration: none; font-size: 0.85rem; line-height: 2;
+      transition: color 0.15s;
+    }
+    .toc-link:hover { color: #38bdf8; }
+    .audience-card {
+      background: #0d1526; border: 1px solid rgba(56,189,248,0.1);
+      border-radius: 12px; padding: 24px;
+      transition: border-color 0.2s;
+    }
+    .audience-card:hover { border-color: rgba(56,189,248,0.3); }
+    @media print {
+      nav, .no-print { display: none !important; }
+      body { background: white; color: #1a1a2e; }
+    }
+  </style>
+</head>
+<body class="antialiased">
+
+<!-- ============================================================ -->
+<!-- NAV -->
+<!-- ============================================================ -->
+<nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 no-print" style="background:rgba(10,15,30,0.92);backdrop-filter:blur(12px);">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-3">
+      <span class="text-slate-400 text-sm hover:text-brand-400 transition-colors">&larr; Home</span>
+      <span class="text-white/10">|</span>
+      <span class="mono text-brand-400 font-bold text-sm tracking-tight">PreciseLedger<span class="text-white">Pro</span></span>
+    </a>
+    <div class="hidden md:flex items-center gap-6 text-sm">
+      <a href="index.html#capabilities" class="text-slate-400 hover:text-brand-400 transition-colors">Capabilities</a>
+      <a href="demo.html" class="text-slate-400 hover:text-brand-400 transition-colors">Live Demo</a>
+      <span class="badge bg-purple-500/20 text-purple-300 border border-purple-500/25">White Paper</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================================ -->
+<!-- HERO -->
+<!-- ============================================================ -->
+<section class="grid-bg relative pt-32 pb-16 px-6">
+  <div class="max-w-4xl mx-auto">
+    <div class="inline-flex items-center gap-2 mono text-xs text-purple-400 bg-purple-500/10 border border-purple-500/20 px-4 py-2 rounded-full mb-8">
+      <span class="w-2 h-2 rounded-full bg-purple-400 inline-block"></span>
+      Position Paper &middot; Problem–Solution Type &middot; April 2026
+    </div>
+    <h1 class="text-4xl md:text-5xl font-extrabold leading-[1.15] mb-6 tracking-tight">
+      Getting Retroactive Corrections Right:<br/>
+      <span class="gradient-text">A Position on Financial Ledger Correctness</span>
+    </h1>
+    <p class="text-lg text-slate-400 max-w-3xl leading-relaxed mb-3">
+      Why every loan servicing system eventually encounters the same audit-trail problem, why conventional approaches cannot solve it simultaneously, and how <strong class="text-white">PreciseLedger Pro</strong> resolves all four correctness requirements in a single open-source SDK.
+    </p>
+    <p class="mono text-xs text-slate-500 mb-10">Published by Precise Ledger Pro &middot; v1.0 &middot; For decision-makers, engineering leads, and compliance officers</p>
+
+    <!-- Meta bar -->
+    <div class="flex flex-wrap gap-4 text-sm text-slate-400 border-t border-white/5 pt-6">
+      <span><strong class="text-slate-300">Type:</strong> Problem–Solution Description</span>
+      <span class="text-white/10">|</span>
+      <span><strong class="text-slate-300">Domain:</strong> Loan Servicing / Financial Infrastructure</span>
+      <span class="text-white/10">|</span>
+      <span><strong class="text-slate-300">Reading time:</strong> ~15 min</span>
+      <span class="text-white/10">|</span>
+      <a href="https://github.com/v1bh0r/precise-ledger-pro" class="text-brand-400 hover:underline">Reference Implementation &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- TWO-COLUMN LAYOUT: TOC + BODY -->
+<!-- ============================================================ -->
+<div class="max-w-6xl mx-auto px-6 py-12 flex gap-16">
+
+  <!-- TOC (sticky sidebar) -->
+  <aside class="hidden lg:block w-56 shrink-0 no-print">
+    <div class="sticky top-24">
+      <p class="section-label mb-4">Contents</p>
+      <nav class="flex flex-col">
+        <a href="#executive-summary"   class="toc-link">Executive Summary</a>
+        <a href="#the-problem"         class="toc-link">1. The Problem</a>
+        <a href="#four-requirements"   class="toc-link">2. Four Requirements</a>
+        <a href="#existing-approaches" class="toc-link">3. Existing Approaches</a>
+        <a href="#who-should-use"      class="toc-link">4. Who Should Use It</a>
+        <a href="#competitive-landscape" class="toc-link">5. Competitive Landscape</a>
+        <a href="#how-plp-solves-it"   class="toc-link">6. How PLP Solves It</a>
+        <a href="#tco"                 class="toc-link">7. Total Cost of Ownership</a>
+        <a href="#conclusion"          class="toc-link">8. Conclusion</a>
+      </nav>
+    </div>
+  </aside>
+
+  <!-- Paper body -->
+  <main class="doc-body flex-1 min-w-0 pb-24">
+
+    <!-- -------------------------------------------------- -->
+    <!-- EXECUTIVE SUMMARY -->
+    <!-- -------------------------------------------------- -->
+    <section id="executive-summary">
+      <div class="callout green mb-8">
+        <p class="section-label mb-3">Executive Summary</p>
+        <p class="text-slate-300 leading-relaxed text-[0.93rem]">
+          Every lending institution — from community banks to large-scale fintech platforms — must eventually process two classes of events that arrive out of chronological order: <strong class="text-white">reversals</strong> of previously applied activities and <strong class="text-white">backdated payments</strong> with an economic effective date earlier than the current ledger tail. These events are not edge cases; they are routine features of any active loan portfolio.
+        </p>
+        <p class="text-slate-300 leading-relaxed text-[0.93rem] mt-3">
+          The financial industry has converged on three dominant strategies — full ledger reconstruction, append-only compensation entries, and mutable balance rewriting — and a hybrid variant that groups downstream corrections into a single opaque entry. Each approach fails to satisfy at least one of four requirements that financial regulators and auditors expect of any production ledger system:
+          <strong class="text-white"> correctness, audit immutability, entry-level traceability,</strong> and <strong class="text-white">retroactive composability</strong>.
+        </p>
+        <p class="text-slate-300 leading-relaxed text-[0.93rem] mt-3">
+          <strong class="text-white">PreciseLedger Pro (PLP)</strong> is an open-source SDK that introduces a <em>fork-and-sync</em> architecture to satisfy all four requirements simultaneously. When a retroactive event arrives, PLP forks the ledger at the affected historical point, replays all subsequent activities deterministically, and reconciles the fork back into the primary ledger with one individually source-attributed adjustment entry per divergent downstream activity. No record is mutated, no audit trail is destroyed, and no opaque grouped correction blocks future retroactive composability.
+        </p>
+      </div>
+    </section>
+
+    <!-- -------------------------------------------------- -->
+    <!-- SECTION 1: THE PROBLEM -->
+    <!-- -------------------------------------------------- -->
+    <h2 id="the-problem">1. The Problem: Why Financial Ledger Correctness Is Hard</h2>
+
+    <p>
+      A loan ledger is, at its surface, a simple ordered list of entries: a disbursal, daily interest accruals, payments, fees. Processed chronologically, maintaining correctness is straightforward. The complexity begins the moment the chronological assumption breaks.
+    </p>
+
+    <h3>1.1 The Retroactive Event Problem</h3>
+    <p>
+      Consider a $1,000,000 loan disbursed on March 1. Two weeks of interest accrues, a payment is applied, and then — a week later — a lender discovers the March 3 payment was applied in error and must be reversed. Alternatively, a borrower submits a payment with a contractual effective date of March 3, but the payment file arrives and is processed on March 5.
+    </p>
+    <p>
+      In both scenarios, an event with an <strong>economic date earlier than the current ledger tail</strong> must be inserted into a ledger that already has downstream entries whose balances were computed assuming the event did not exist. The derived values — daily interest accruals that depend on the running principal balance — are now wrong for every entry after the retroactive insertion point.
+    </p>
+
+    <div class="callout amber">
+      <p class="text-amber-300 font-semibold text-sm mb-2">The core tension</p>
+      <p class="text-slate-300 text-sm leading-relaxed">
+        Correcting downstream balances requires either (a) rewriting historical entries (destroying the audit trail), (b) replaying the entire ledger (expensive and fragile under concurrency), (c) appending a single grouped correction (correct balances but opaque provenance), or (d) appending individually traced per-activity corrections (correct and traceable, but requires a more sophisticated reconciliation algorithm). Only option (d) satisfies all four requirements — and no widely adopted open-source framework provides it.
+      </p>
+    </div>
+
+    <h3>1.2 Reversals Are Not Simple Negations</h3>
+    <p>
+      A naive reversal appends an entry that negates the direct impact of the reversed activity. But it does not account for <strong>downstream derived effects</strong>. If a $10,000 payment was reversed and two days of interest had accrued since that payment on the reduced principal, those interest accruals were computed on a principal balance that no longer existed from the moment the reversal took effect. They are now wrong — and they produce <strong>silent balance drift</strong> that accumulates indefinitely.
+    </p>
+    <p>
+      The PLP evaluation demonstrates this concretely: reversing a single payment on a standard loan scenario produces a $3.30 principal misallocation in a grouped-adjustment system. The error is small on a nine-entry ledger; on a ledger with years of daily accruals, the compounding effect of unreconciled downstream entries is material.
+    </p>
+
+    <h3>1.3 Why This Is Getting Harder, Not Easier</h3>
+    <p>
+      Several trends are increasing the frequency and complexity of retroactive events in modern lending:
+    </p>
+    <ul class="list-none space-y-2 pl-0">
+      <li class="check">Real-time payment rails deliver settlement confirmations hours or days after contractual effective dates, creating systematic backdating.</li>
+      <li class="check">Buy-now-pay-later and embedded lending products run high-volume, short-tenor loans where reversal rates can reach 5–10% of all transactions.</li>
+      <li class="check">Regulatory change — including CFPB supervision of non-bank servicers — is tightening requirements around audit traceability, specifically requiring that every balance entry be explainable by reference to a documented source activity.</li>
+      <li class="check">Event-sourced architectures in microservices environments create at-least-once delivery semantics that produce legitimate duplicate events, requiring idempotent ledger application.</li>
+    </ul>
+
+    <!-- -------------------------------------------------- -->
+    <!-- SECTION 2: FOUR REQUIREMENTS -->
+    <!-- -------------------------------------------------- -->
+    <h2 id="four-requirements">2. The Four Requirements for a Correct Ledger</h2>
+
+    <p>
+      We derive four requirements from financial system practice and regulatory expectation. These requirements are not aspirational; they represent the minimum bar for a production-grade loan ledger in any regulated jurisdiction.
+    </p>
+
+    <div class="space-y-4 my-6">
+      <div class="req-card green">
+        <div class="flex items-start gap-4">
+          <span class="mono text-green-400 font-bold text-sm shrink-0 pt-0.5">R1</span>
+          <div>
+            <p class="font-semibold text-slate-200 mb-1">Correctness</p>
+            <p class="text-slate-400 text-sm leading-relaxed">After applying any retroactive event, running balances of <em>all</em> subsequent entries must reflect the corrected history. No partial propagation, no silent rounding drift, no balance discrepancy between the ledger and a clean reconstruction.</p>
+          </div>
+        </div>
+      </div>
+      <div class="req-card amber">
+        <div class="flex items-start gap-4">
+          <span class="mono text-amber-400 font-bold text-sm shrink-0 pt-0.5">R2</span>
+          <div>
+            <p class="font-semibold text-slate-200 mb-1">Audit Immutability</p>
+            <p class="text-slate-400 text-sm leading-relaxed">Original ledger entries must not be modified or deleted once persisted. This is a hard regulatory requirement in most jurisdictions for financial records, and a prerequisite for forensic reconstructability.</p>
+          </div>
+        </div>
+      </div>
+      <div class="req-card purple">
+        <div class="flex items-start gap-4">
+          <span class="mono text-purple-400 font-bold text-sm shrink-0 pt-0.5">R3</span>
+          <div>
+            <p class="font-semibold text-slate-200 mb-1">Entry-Level Traceability</p>
+            <p class="text-slate-400 text-sm leading-relaxed">Each correction entry must identify the specific source activity it corrects. An opaque "+$3.30 adjustment" is insufficient for audit; every line in the ledger must be explainable by a single named source event.</p>
+          </div>
+        </div>
+      </div>
+      <div class="req-card">
+        <div class="flex items-start gap-4">
+          <span class="mono text-brand-400 font-bold text-sm shrink-0 pt-0.5">R4</span>
+          <div>
+            <p class="font-semibold text-slate-200 mb-1">Retroactive Composability</p>
+            <p class="text-slate-400 text-sm leading-relaxed">The ledger must cleanly support a <em>subsequent</em> retroactive event without requiring decomposition of prior correction entries. A second reversal or backdated payment must not require knowledge of how previous corrections were constructed.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- -------------------------------------------------- -->
+    <!-- SECTION 3: EXISTING APPROACHES -->
+    <!-- -------------------------------------------------- -->
+    <h2 id="existing-approaches">3. Existing Approaches and Their Fundamental Limitations</h2>
+
+    <p>
+      Four strategies are prevalent in production loan servicing systems today:
+    </p>
+
+    <h3>3.1 Full Ledger Reconstruction</h3>
+    <p>
+      When a retroactive event arrives, discard the current derived ledger and rebuild it from scratch from the original activity log. This approach satisfies all four requirements (R1–R4) but is computationally expensive: for a ledger with thousands of entries and a retroactive event at position <em>k</em>, the cost is proportional to all entries from <em>k</em> onward that must be recomputed and persisted. For a 10-year-seasoned loan with daily interest accruals, that is 3,650+ entries per retroactive event. Under high retroactive event volume — common in late-arriving payment file batches — this becomes a throughput bottleneck. Operationally, many teams abandon this approach as portfolios grow and instead accept one of the weaker consistency guarantees below.
+    </p>
+
+    <h3>3.2 Append-Only Compensation (Naive)</h3>
+    <p>
+      Append a single entry that negates the direct impact of the reversed or corrected activity. Do not recompute downstream entries. This is computationally efficient and preserves the audit trail (R2), but produces <strong>balance drift</strong> (violates R1) whenever the corrected activity altered the basis for any subsequent derived calculation. Daily interest accruals, fee computations, and allocation waterfalls all depend on running balances; correcting the balance at one point without propagating the correction downstream silently invalidates every subsequent derived entry.
+    </p>
+
+    <h3>3.3 Mutable Balance Rewriting</h3>
+    <p>
+      Update historical entry values in place. Some commercial systems do this during end-of-month reconciliation cycles. This approach can satisfy R1 but directly violates R2 — it destroys the immutable audit trail required by financial regulations, introduces concurrency hazards, and makes forensic reconstruction impossible without a separate change log. Regulatory examiners in the US, UK, and EU treat mutable ledger records as a data integrity risk.
+    </p>
+
+    <h3>3.4 Grouped Downstream Adjustment</h3>
+    <p>
+      A widely used compromise: apply a compensation entry for the direct impact of the reversed activity, then roll up all downstream balance corrections into a single grouped adjustment entry. This maintains correct current balances (R1) and does not modify original entries (R2), but it violates R3 — a single "+$3.30" row cannot be traced to the three individual downstream activities it represents — and it violates R4, because a subsequent retroactive event that tries to replay the history must decompose the grouped adjustment, which requires re-running the entire history from scratch. In effect, it defers the full-reconstruction cost rather than eliminating it.
+    </p>
+
+    <div class="callout">
+      <p class="text-brand-400 font-semibold text-sm mb-3">Approach-vs-Requirement Coverage Matrix</p>
+      <div class="overflow-x-auto">
+        <table class="compare-table text-sm">
+          <thead>
+            <tr>
+              <th class="text-slate-400 w-48">Approach</th>
+              <th class="text-slate-400">R1 Correct</th>
+              <th class="text-slate-400">R2 Immutable</th>
+              <th class="text-slate-400">R3 Traceable</th>
+              <th class="text-slate-400">R4 Composable</th>
+              <th class="text-slate-400">Practical Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-slate-300">Full Reconstruction</td>
+              <td><span class="tick">✓</span></td>
+              <td><span class="tick">✓</span></td>
+              <td><span class="tick">✓</span></td>
+              <td><span class="tick">✓</span></td>
+              <td class="text-amber-400 text-xs">O(n) per event</td>
+            </tr>
+            <tr>
+              <td class="text-slate-300">Append-Only Naive</td>
+              <td><span class="cross-icon">✗</span></td>
+              <td><span class="tick">✓</span></td>
+              <td><span class="partial">△ partial</span></td>
+              <td><span class="cross-icon">✗</span></td>
+              <td class="text-green-400 text-xs">O(1)</td>
+            </tr>
+            <tr>
+              <td class="text-slate-300">Mutable Rewriting</td>
+              <td><span class="tick">✓</span></td>
+              <td><span class="cross-icon">✗</span></td>
+              <td><span class="cross-icon">✗</span></td>
+              <td><span class="partial">△ fragile</span></td>
+              <td class="text-green-400 text-xs">O(k)</td>
+            </tr>
+            <tr>
+              <td class="text-slate-300">Grouped Adjustment</td>
+              <td><span class="tick">✓</span></td>
+              <td><span class="tick">✓</span></td>
+              <td><span class="cross-icon">✗</span></td>
+              <td><span class="cross-icon">✗</span></td>
+              <td class="text-green-400 text-xs">O(k)</td>
+            </tr>
+            <tr class="bg-brand-500/5">
+              <td class="text-brand-400 font-semibold">PreciseLedger Pro</td>
+              <td><span class="tick">✓</span></td>
+              <td><span class="tick">✓</span></td>
+              <td><span class="tick">✓</span></td>
+              <td><span class="tick">✓</span></td>
+              <td class="text-green-400 text-xs">O(k log k)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="footnote mt-3">k = activities since insertion point; n = total ledger entries. In practice, k ≪ n for most loan portfolios.</p>
+    </div>
+
+    <!-- -------------------------------------------------- -->
+    <!-- SECTION 4: WHO SHOULD USE PLP -->
+    <!-- -------------------------------------------------- -->
+    <h2 id="who-should-use">4. Who Should Use PreciseLedger Pro</h2>
+
+    <p>
+      PLP is a domain-specific SDK, not a general-purpose ledger. It is designed for teams building or operating loan servicing infrastructure where retroactive events are a first-class concern. The following profiles represent its primary audience.
+    </p>
+
+    <div class="grid sm:grid-cols-2 gap-5 my-6">
+
+      <div class="audience-card">
+        <div class="text-2xl mb-3">🏦</div>
+        <h3 class="font-semibold text-slate-200 mb-2 text-base">Direct Lenders<br/><span class="text-slate-500 text-xs font-normal">Banks · Credit Unions · CDFIs · Non-Bank Lenders</span></h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Any institution that services its own loan book will encounter reversal and backdating scenarios. PLP replaces hand-crafted rollback logic — code that is typically written once, rarely tested, and silently broken during refactors — with a deterministic engine verified across 53 Java and 64 Haskell invariants.</p>
+      </div>
+
+      <div class="audience-card">
+        <div class="text-2xl mb-3">⚡</div>
+        <h3 class="font-semibold text-slate-200 mb-2 text-base">Embedded Lending Platforms<br/><span class="text-slate-500 text-xs font-normal">BNPL · Marketplace Lending · Fintech Infrastructure</span></h3>
+        <p class="text-slate-400 text-sm leading-relaxed">High-velocity, high-reversal-rate lending products need idempotent, traceable ledger infrastructure from day one. PLP's composite idempotency keys and retroactive composability are purpose-built for event-driven architectures with at-least-once delivery.</p>
+      </div>
+
+      <div class="audience-card">
+        <div class="text-2xl mb-3">🛠️</div>
+        <h3 class="font-semibold text-slate-200 mb-2 text-base">Loan Management Software Vendors<br/><span class="text-slate-500 text-xs font-normal">LMS · Core Banking · Servicing Platforms</span></h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Teams building general-purpose servicing platforms for multiple lenders must handle every combination of retroactive scenario their clients will encounter. PLP provides a correct-by-construction algorithmic foundation — with a formal academic treatment — that can underpin a vendor's own servicing engine.</p>
+      </div>
+
+      <div class="audience-card">
+        <div class="text-2xl mb-3">🏛️</div>
+        <h3 class="font-semibold text-slate-200 mb-2 text-base">Compliance &amp; Audit Teams<br/><span class="text-slate-500 text-xs font-normal">Internal Audit · Regulatory Technology · Model Risk</span></h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Regulatory examiners — particularly under CFPB, OCC, and FCA frameworks — increasingly require that every ledger balance change be traceable to a documented source activity. PLP's entry-level traceability (R3) directly satisfies this requirement, and its open-source implementation is auditable by any third party.</p>
+      </div>
+
+      <div class="audience-card">
+        <div class="text-2xl mb-3">🔬</div>
+        <h3 class="font-semibold text-slate-200 mb-2 text-base">Financial Systems Researchers<br/><span class="text-slate-500 text-xs font-normal">Academic Institutions · Model Verification Labs</span></h3>
+        <p class="text-slate-400 text-sm leading-relaxed">The Haskell reference implementation and associated academic draft provide a formal specification of the fork-and-sync algorithm. Researchers studying bitemporal consistency, compensating transaction semantics, or financial data correctness will find both a theoretical framework and a reference implementation in two independent type systems.</p>
+      </div>
+
+      <div class="audience-card">
+        <div class="text-2xl mb-3">🔄</div>
+        <h3 class="font-semibold text-slate-200 mb-2 text-base">Event-Sourced Architecture Teams<br/><span class="text-slate-500 text-xs font-normal">Microservices · Kafka-Driven · CQRS Patterns</span></h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Teams building event-sourced financial services understand that "replay from the event log" is elegant in theory and expensive in practice. PLP provides O(k log k) — not O(n) — retroactive correction by operating on the delta between fork and primary, not a full rebuild from genesis.</p>
+      </div>
+
+    </div>
+
+    <h3>4.1 Who Should Not Use PreciseLedger Pro</h3>
+    <p>
+      PLP is a loan ledger SDK. It is not a general-purpose accounting package, a double-entry bookkeeping system for chart-of-accounts management, or a payment gateway. Teams building general ledgers for non-loan use cases, ERP integrations, or real-time gross settlement systems should evaluate whether their retroactive event requirements match the loan-servicing assumptions in PLP's data model before adopting it.
+    </p>
+
+    <!-- -------------------------------------------------- -->
+    <!-- SECTION 5: COMPETITIVE LANDSCAPE -->
+    <!-- -------------------------------------------------- -->
+    <h2 id="competitive-landscape">5. Competitive Landscape Analysis</h2>
+
+    <p>
+      PLP occupies a specific position in the financial infrastructure landscape. The following analysis considers the categories of solutions that a decision-maker would examine alongside PLP.
+    </p>
+
+    <h3>5.1 Commercial Loan Management Platforms (e.g., ACBS, nCino, Finastra Fusion)</h3>
+    <p>
+      Enterprise LMS platforms handle retroactive events through proprietary mechanisms that are not publicly documented. Their algorithms for backdating and reversal propagation are typically not auditable by the lender, and their audit-trail properties cannot be independently verified. While these platforms are fully featured for loan lifecycle management, they represent a vendor-lock-in risk for teams that require transparency into the correction algorithm, and their licensing costs are substantial for smaller lenders or fintech platforms at scale.
+    </p>
+    <p><strong>Where PLP differs:</strong> Open-source, auditable implementation. Full source code. Self-hosted. Academic treatment published.</p>
+
+    <h3>5.2 Core Banking Systems (e.g., Temenos, FIS, Finastra)</h3>
+    <p>
+      Core banking platforms include loan servicing modules, but their ledger correction algorithms are embedded deep within proprietary transaction-processing engines. Integration requires implementing to the core's APIs, which typically abstract away the retroactive correction strategy. Teams that need direct control over how their ledger behaves during reversals — for regulatory evidence or model risk management — cannot obtain that control from a core banking abstraction layer.
+    </p>
+    <p><strong>Where PLP differs:</strong> A library, not a platform. Integrates at the service layer into any JPA/Hibernate stack. Core banking systems can use PLP as their ledger engine.</p>
+
+    <h3>5.3 Open-Source Accounting Frameworks (e.g., Apache Fineract, Mifos)</h3>
+    <p>
+      Apache Fineract is a capable open-source loan management platform with a broad feature set. However, its retroactive correction logic uses grouped adjustments — the same approach described in Section 3.4 — and does not satisfy R3 (entry-level traceability) or R4 (retroactive composability). Its ledger module is a complete application, not a composable SDK; teams that want only the ledger engine without the full platform must either fork the project significantly or work within its architectural constraints.
+    </p>
+    <p><strong>Where PLP differs:</strong> Pure library with no UI/API dependencies. Correct-by-construction algorithm, not grouped adjustments. Suitable for composition within any architecture.</p>
+
+    <h3>5.4 Event Sourcing Frameworks (e.g., Axon Framework, EventStoreDB)</h3>
+    <p>
+      Event sourcing frameworks store state changes as immutable event sequences and reconstruct current state by replay. They are excellent infrastructure for implementing R2 (audit immutability) and R4 (composability) but do not themselves define how retroactive financial events should alter derived running balances. Teams using Axon or EventStoreDB still need to implement the retroactive reconciliation algorithm — the exact problem PLP solves. PLP is complementary to event sourcing infrastructure, not competitive with it.
+    </p>
+    <p><strong>Where PLP differs:</strong> Solves the problem that event sourcing frameworks leave up to the application developer: how to efficiently reconcile derived running balances when historical events are inserted.</p>
+
+    <h3>5.5 In-House Custom Implementations</h3>
+    <p>
+      The most common "competitor" is custom code written by the engineering team. In-house retroactive correction logic is almost universally one of the following: a naive negation entry (violates R1), a full-rebuild trigger (correct but slow), or a grouped adjustment (violates R3–R4). Teams discover the edge cases — nested reversals, backdated events on already-reversed ledgers, idempotency failures during retry storms — at the worst possible time: in production, under exam, or during a reconciliation failure.
+    </p>
+    <p><strong>Where PLP differs:</strong> 117 combined test invariants (53 Java + 64 Haskell) covering the full matrix of retroactive scenarios, independently verified in two type systems. Developing equivalent coverage in-house requires months of specialist engineering time and is rarely funded before production incidents occur.</p>
+
+    <!-- Full comparison table -->
+    <div class="card p-6 mt-8 overflow-x-auto">
+      <p class="section-label mb-5">Full Landscape Comparison</p>
+      <table class="compare-table text-sm">
+        <thead>
+          <tr>
+            <th class="text-slate-400 w-40">Category</th>
+            <th class="text-slate-400">Open Source</th>
+            <th class="text-slate-400">Auditable Algorithm</th>
+            <th class="text-slate-400">R1–R4 All Met</th>
+            <th class="text-slate-400">SDK (no platform)</th>
+            <th class="text-slate-400">Self-Hosted</th>
+            <th class="col-plp-head font-bold">PreciseLedger Pro</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-slate-300">Commercial LMS</td>
+            <td><span class="cross-icon">✗</span></td>
+            <td><span class="cross-icon">✗</span></td>
+            <td><span class="partial">△ unknown</span></td>
+            <td><span class="cross-icon">✗</span></td>
+            <td><span class="partial">△ private</span></td>
+            <td class="col-plp">&mdash;</td>
+          </tr>
+          <tr>
+            <td class="text-slate-300">Core Banking</td>
+            <td><span class="cross-icon">✗</span></td>
+            <td><span class="cross-icon">✗</span></td>
+            <td><span class="partial">△ unknown</span></td>
+            <td><span class="cross-icon">✗</span></td>
+            <td><span class="partial">△ varies</span></td>
+            <td class="col-plp">&mdash;</td>
+          </tr>
+          <tr>
+            <td class="text-slate-300">Apache Fineract</td>
+            <td><span class="tick">✓</span></td>
+            <td><span class="partial">△ grouped adj.</span></td>
+            <td><span class="cross-icon">✗</span></td>
+            <td><span class="cross-icon">✗</span></td>
+            <td><span class="tick">✓</span></td>
+            <td class="col-plp">&mdash;</td>
+          </tr>
+          <tr>
+            <td class="text-slate-300">Event Sourcing FW</td>
+            <td><span class="tick">✓</span></td>
+            <td><span class="partial">△ no recon logic</span></td>
+            <td><span class="cross-icon">✗</span></td>
+            <td><span class="tick">✓</span></td>
+            <td><span class="tick">✓</span></td>
+            <td class="col-plp">&mdash;</td>
+          </tr>
+          <tr>
+            <td class="text-slate-300">In-House Custom</td>
+            <td><span class="partial">△ internal</span></td>
+            <td><span class="partial">△ rarely</span></td>
+            <td><span class="cross-icon">✗</span></td>
+            <td><span class="tick">✓</span></td>
+            <td><span class="tick">✓</span></td>
+            <td class="col-plp">&mdash;</td>
+          </tr>
+          <tr class="bg-brand-500/5">
+            <td class="text-brand-400 font-bold">PreciseLedger Pro</td>
+            <td class="col-plp"><span class="tick">✓</span></td>
+            <td class="col-plp"><span class="tick">✓</span></td>
+            <td class="col-plp"><span class="tick">✓ All 4</span></td>
+            <td class="col-plp"><span class="tick">✓</span></td>
+            <td class="col-plp"><span class="tick">✓</span></td>
+            <td class="col-plp text-brand-400 font-semibold">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- -------------------------------------------------- -->
+    <!-- SECTION 6: HOW PLP SOLVES IT -->
+    <!-- -------------------------------------------------- -->
+    <h2 id="how-plp-solves-it">6. How PreciseLedger Pro Solves It</h2>
+
+    <p>
+      PLP's core innovation is a <strong>fork-and-sync protocol</strong> that achieves O(k log k) retroactive correctness — where k is the number of activities since the insertion point — without full ledger reconstruction and without grouped corrections.
+    </p>
+
+    <h3>6.1 The Fork-and-Sync Protocol (Non-Technical Summary)</h3>
+    <p>
+      When a retroactive event arrives, the engine does three things:
+    </p>
+    <ol class="list-none space-y-3 my-4 pl-0">
+      <li class="flex gap-4">
+        <span class="mono text-brand-400 font-bold shrink-0">01</span>
+        <span class="text-slate-400"><strong class="text-slate-200">Fork:</strong> Create a copy of the ledger up to the retroactive event's effective date. Apply the retroactive event to this fork.</span>
+      </li>
+      <li class="flex gap-4">
+        <span class="mono text-brand-400 font-bold shrink-0">02</span>
+        <span class="text-slate-400"><strong class="text-slate-200">Replay:</strong> Re-apply every subsequent activity to the fork using a virtual ledger clock that is fixed to the primary ledger's timestamp at invocation time — guaranteeing deterministic, wall-clock-independent results.</span>
+      </li>
+      <li class="flex gap-4">
+        <span class="mono text-brand-400 font-bold shrink-0">03</span>
+        <span class="text-slate-400"><strong class="text-slate-200">Sync:</strong> Compare the per-activity balance impact in the fork against the primary ledger. For each activity whose impact diverged, append one source-attributed adjustment entry to the primary ledger. Activities with identical impact produce no entry (zero-delta suppression).</span>
+      </li>
+    </ol>
+    <p>
+      The primary ledger is never mutated. Every new entry — including every adjustment — names the source activity it corrects. A subsequent retroactive event simply re-runs the same protocol; it does not need to decompose prior adjustment entries.
+    </p>
+
+    <h3>6.2 Cross-Language Correctness Verification</h3>
+    <p>
+      The algorithm is independently implemented in <strong>Java 21</strong> (53 verified invariants, Quarkus/Spring compatible) and <strong>pure Haskell</strong> (GHC 9.6.4, 64 verified invariants). The identical test outcomes across two independent type systems — an imperative object-oriented implementation and a strongly typed pure functional implementation — serve as a cross-language proof that the algorithm is correct by construction, not by accident of a particular runtime or framework.
+    </p>
+
+    <h3>6.3 Precision Architecture</h3>
+    <p>
+      Monetary arithmetic uses the <strong>JavaMoney/Moneta</strong> library with a 256-bit <code class="mono text-brand-400 text-xs">HALF_EVEN</code> MathContext (banker's rounding). No IEEE-754 floating-point arithmetic is used in any balance computation. Balances are stored as scaled 64-bit integers and promoted to <code class="mono text-brand-400 text-xs">MonetaryAmount</code> objects for arithmetic, then demoted back, eliminating the category of balance drift caused by floating-point accumulation over millions of entries.
+    </p>
+
+    <!-- -------------------------------------------------- -->
+    <!-- SECTION 7: TCO -->
+    <!-- -------------------------------------------------- -->
+    <h2 id="tco">7. Total Cost of Ownership Argument</h2>
+
+    <p>
+      For most teams evaluating PLP, the relevant comparison is not "PLP vs. a commercial platform" but "PLP vs. continuing to build and maintain in-house ledger correction logic." The following framework structures that comparison.
+    </p>
+
+    <h3>7.1 The Hidden Cost of In-House Retroactive Logic</h3>
+    <div class="grid sm:grid-cols-3 gap-4 my-5">
+      <div class="card p-5">
+        <p class="text-amber-400 font-semibold mono text-sm mb-2">Discovery Cost</p>
+        <p class="text-slate-400 text-xs leading-relaxed">Retroactive edge cases are discovered in production, not during development. A reversal on a reversed ledger, or a backdated event applied to an already-reconciled correction, typically surfaces during a reconciliation failure or regulatory exam — environments where the cost of a bug is high.</p>
+      </div>
+      <div class="card p-5">
+        <p class="text-amber-400 font-semibold mono text-sm mb-2">Maintenance Cost</p>
+        <p class="text-slate-400 text-xs leading-relaxed">In-house ledger correction logic is typically owned by one or two engineers. As the team changes, the institutional knowledge around edge-case behavior degrades. PLP externalizes this knowledge into open-source, documented, formally typed code — knowledge that cannot walk out of the door.</p>
+      </div>
+      <div class="card p-5">
+        <p class="text-amber-400 font-semibold mono text-sm mb-2">Regulatory Cost</p>
+        <p class="text-slate-400 text-xs leading-relaxed">Regulatory examiners are increasingly requesting that lenders demonstrate the correctness of their balance calculation algorithms. An in-house implementation requires internal model validation documentation. PLP provides a publicly available academic treatment and cross-language verification as an external reference.</p>
+      </div>
+    </div>
+
+    <h3>7.2 Integration Investment</h3>
+    <p>
+      PLP integrates into any JPA/Hibernate stack with a Maven dependency. The service layer API surface is five methods: <code class="mono text-brand-400 text-xs">applyLedgerActivities</code>, <code class="mono text-brand-400 text-xs">reverseLedgerActivity</code>, <code class="mono text-brand-400 text-xs">syncWithRetroactiveLedger</code>, <code class="mono text-brand-400 text-xs">getLedger</code>, and <code class="mono text-brand-400 text-xs">getCurrentLedgerClock</code>. The core domain objects (<code class="mono text-brand-400 text-xs">Ledger</code>, <code class="mono text-brand-400 text-xs">LedgerEntry</code>, <code class="mono text-brand-400 text-xs">LedgerActivity</code>) contain no framework or repository dependencies, enabling isolated unit testing without a database.
+    </p>
+    <p>
+      Teams evaluating integration risk should note: PLP's hexagonal architecture means the engine can be tested deterministically in memory, with all time and context dependencies injected. Regression-testing retroactive scenarios does not require a running database server or a specific time of day.
+    </p>
+
+    <!-- -------------------------------------------------- -->
+    <!-- SECTION 8: CONCLUSION -->
+    <!-- -------------------------------------------------- -->
+    <h2 id="conclusion">8. Conclusion and Recommended Next Steps</h2>
+
+    <p>
+      The financial industry's widespread reliance on grouped adjustments and naive compensation entries is not a consequence of anyone choosing an incorrect approach — it is the consequence of no correct-by-default, open-source alternative existing. Building a correct retroactive correction engine from scratch is a multi-month specialist engineering project with significant ongoing maintenance burden. For most lending teams, it is not a funded priority until a production incident or regulatory examination makes it one.
+    </p>
+
+    <p>
+      PreciseLedger Pro provides that alternative. The fork-and-sync protocol satisfies all four correctness requirements (R1–R4), operates at O(k log k) rather than O(n), is verified in two independent type systems, and is available under an open-source license with full source code. It is not a platform that needs to be replaced during a core system migration; it is a library that can be embedded into any existing loan servicing stack at the service layer.
+    </p>
+
+    <div class="callout green mt-8">
+      <p class="text-green-400 font-semibold text-sm mb-3">Recommended Next Steps</p>
+      <ul class="list-none space-y-2 pl-0">
+        <li class="check text-slate-300 text-sm"><strong>Run the live demo</strong> — process the nine-activity canonical scenario and compare PLP output against the conventional grouped-adjustment ledger, entry by entry.</li>
+        <li class="check text-slate-300 text-sm"><strong>Review the academic draft</strong> — the algorithms, data structures, formal requirements, and comparative evaluation are documented at the arxiv-preprint level for technical and compliance review.</li>
+        <li class="check text-slate-300 text-sm"><strong>Audit the implementation</strong> — the full Java and Haskell source is available on GitHub under an open-source license.</li>
+        <li class="check text-slate-300 text-sm"><strong>Identify your retroactive event volume</strong> — assess your current reversal rate and backdated payment frequency; teams with >0.5% retroactive event ratios will see the most immediate correctness benefit.</li>
+        <li class="check text-slate-300 text-sm"><strong>Contact the team</strong> — for implementation guidance, integration support, or model validation documentation for regulatory purposes.</li>
+      </ul>
+    </div>
+
+    <!-- -------------------------------------------------- -->
+    <!-- REFERENCES -->
+    <!-- -------------------------------------------------- -->
+    <h2 id="references" style="margin-top:3rem;">References</h2>
+    <div class="space-y-2 text-sm text-slate-500">
+      <p>Bernstein, P. A., &amp; Goodman, N. (1981). Concurrency control in distributed database systems. <em>ACM Computing Surveys</em>, 13(2), 185–221.</p>
+      <p>Fowler, M. (2005). <em>Event Sourcing</em>. martinfowler.com.</p>
+      <p>Garcia-Molina, H., &amp; Salem, K. (1987). Sagas. <em>ACM SIGMOD Record</em>, 16(3), 249–259.</p>
+      <p>Jensen, C. S., Clifford, J., Elmasri, R., Gadia, S. K., Hayes, P., &amp; Jajodia, S. (1994). A consensus glossary of temporal database concepts. <em>ACM SIGMOD Record</em>, 23(1), 52–64.</p>
+      <p>Mahajan, V., &amp; Bedi, R. (2025). Retroactive Reconciliation in Financial Ledgers: A Fork-and-Sync Architecture for Out-of-Order Activities and Reversals with Per-Entry Traced Corrections. <em>arXiv preprint</em> (cs.DB).</p>
+      <p>Meijer, E., &amp; Fokkinga, M. (1991). Functional programming with bananas, lenses, envelopes and barbed wire. <em>FPCA '91</em>, LNCS 523.</p>
+      <p>Snodgrass, R. T. (1999). <em>Developing Time-Oriented Database Applications in SQL</em>. Morgan Kaufmann.</p>
+    </div>
+
+    <!-- -------------------------------------------------- -->
+    <!-- DISCLAIMER -->
+    <!-- -------------------------------------------------- -->
+    <div class="mt-10 pt-6 border-t border-white/5">
+      <p class="footnote">
+        This white paper is published by Precise Ledger Pro and has not been subject to independent third-party review. It represents the organization's position on financial ledger correctness methodology. The evaluation scenario in Section 5 and Section 7 of the reference implementation paper is reproduced here with full methodology transparency. All balance figures are computed by the publicly available reference implementation. This document does not constitute legal, regulatory, or financial advice.
+      </p>
+    </div>
+
+  </main>
+</div>
+
+<!-- ============================================================ -->
+<!-- CTA BANNER -->
+<!-- ============================================================ -->
+<section class="border-t border-b border-white/5 py-16 px-6 text-center no-print" style="background: linear-gradient(180deg, rgba(14,165,233,0.04) 0%, transparent 100%);">
+  <h2 class="text-2xl md:text-3xl font-bold mb-3">Ready to build a correct ledger?</h2>
+  <p class="text-slate-400 mb-8 max-w-lg mx-auto text-sm">Run the live demo, review the source code, or reach out to discuss your integration.</p>
+  <div class="flex flex-col sm:flex-row gap-4 justify-center">
+    <a href="demo.html" class="btn-primary">View Live Demo</a>
+    <a href="https://github.com/v1bh0r/precise-ledger-pro" class="btn-outline">GitHub Repository</a>
+    <a href="mailto:contact@preciseledger.pro" class="btn-outline">Contact Us</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-500 text-sm no-print">
+  <a href="index.html" class="mono text-brand-400/60 hover:text-brand-400 transition-colors">PreciseLedgerPro</a>
+  <span>&copy; 2024&ndash;2026 Precise Ledger Pro. All rights reserved.</span>
+  <a href="https://github.com/v1bh0r/precise-ledger-pro" class="hover:text-brand-400 transition-colors">GitHub &rarr;</a>
+</footer>
+
+</body>
+</html>
