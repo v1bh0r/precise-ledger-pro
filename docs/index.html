@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Precise Ledger Pro — The Ledger SDK That Is Correct by Construction</title>
-  <meta name="description" content="A perpetual-licensed ledger SDK — available in Java and Haskell — that guarantees loan ledger correctness through reversals, backdated entries, and out-of-order events. Self-hosted, source code included." />
+  <meta name="description" content="An open-source ledger SDK — available in Java and Haskell — that guarantees loan ledger correctness through reversals, backdated entries, and out-of-order events. Self-hosted, source code included." />
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -59,11 +59,6 @@
       transition: all 0.15s;
     }
     .btn-outline:hover { border-color: #38bdf8; background: rgba(56,189,248,0.06); }
-    .pricing-card {
-      background: #0d1526; border: 1px solid rgba(56,189,248,0.12);
-      border-radius: 16px; padding: 36px; transition: border-color 0.2s;
-    }
-    .pricing-card.featured { border-color: rgba(56,189,248,0.45); box-shadow: 0 0 40px rgba(56,189,248,0.08); }
     .check::before { content: "✓"; color: #4ade80; margin-right: 10px; font-weight: 700; }
     .cross::before { content: "✗"; color: #f87171; margin-right: 10px; font-weight: 700; }
     .section-label { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: #38bdf8; }
@@ -91,7 +86,7 @@
       <a href="#capabilities" class="text-slate-400 hover:text-brand-400 transition-colors">Capabilities</a>
       <a href="#algorithm" class="text-slate-400 hover:text-brand-400 transition-colors">How It Works</a>
       <a href="#integration" class="text-slate-400 hover:text-brand-400 transition-colors">Integration</a>
-      <a href="#pricing" class="text-slate-400 hover:text-brand-400 transition-colors">Pricing</a>
+      <a href="whitepaper.html" class="text-slate-400 hover:text-brand-400 transition-colors">White Paper</a>
       <a href="demo.html" class="btn-outline text-sm !py-2 !px-4">Live Demo</a>
     </div>
   </div>
@@ -105,7 +100,7 @@
   <div class="relative max-w-4xl mx-auto">
     <div class="inline-flex items-center gap-2 mono text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 px-4 py-2 rounded-full mb-8">
       <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block"></span>
-      Perpetual License &middot; Self-Hosted &middot; Java + Haskell
+      Open Source &middot; Self-Hosted &middot; Java + Haskell
     </div>
     <h1 class="text-5xl md:text-6xl font-extrabold leading-[1.1] mb-6 tracking-tight">
       The Ledger SDK<br/>
@@ -120,7 +115,7 @@
     </p>
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
       <a href="demo.html" class="btn-primary">View Live Demo</a>
-      <a href="#pricing" class="btn-outline">Get a License</a>
+      <a href="mailto:contact@preciseledge.pro" class="btn-outline">Contact Us</a>
     </div>
   </div>
 </section>
@@ -358,8 +353,7 @@ ledgerService.<span class="text-brand-400">applyLedgerActivity</span>(
     <div class="flex flex-col justify-center">
       <h3 class="font-semibold text-xl mb-4">Your code, your servers, your audit trail</h3>
       <ul class="space-y-3 text-slate-400 text-[0.92rem]">
-        <li class="check">Perpetual license &mdash; keeps working even if your support lapses</li>
-        <li class="check">Full source code included with Business plans for auditing &amp; safe-keeping</li>
+        <li class="check">Full source code &mdash; open source and auditable</li>
         <li class="check">Self-hosted &mdash; deploy on-prem, private cloud, or air-gapped environments</li>
         <li class="check">Works with any JPA/Hibernate datastore (PostgreSQL, MySQL, Oracle, H2)</li>
         <li class="check">No phone-home, no telemetry, no vendor lock-in</li>
@@ -369,59 +363,7 @@ ledgerService.<span class="text-brand-400">applyLedgerActivity</span>(
   </div>
 </section>
 
-<!-- ============================================================ -->
-<!-- PRICING -->
-<!-- ============================================================ -->
-<section id="pricing" class="max-w-6xl mx-auto px-6 py-24">
-  <p class="section-label mb-4">// pricing</p>
-  <h2 class="text-3xl md:text-4xl font-bold mb-5">Perpetual license. Yours forever.</h2>
-  <p class="text-slate-400 mb-14 max-w-2xl">One price, deploy anywhere. Every plan includes a perpetual usage license, the 53-test acceptance suite, and your first year of updates &amp; support.</p>
 
-  <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-    <!-- Starter -->
-    <div class="pricing-card">
-      <h3 class="mono text-brand-400 text-sm font-semibold mb-2">STARTER</h3>
-      <div class="flex items-baseline gap-1 mb-1">
-        <span class="text-4xl font-bold">$2,999</span>
-        <span class="text-slate-500 text-sm">perpetual</span>
-      </div>
-      <p class="text-slate-500 text-sm mb-6">+ $499 / year for support renewal</p>
-      <hr class="border-white/5 mb-6" />
-      <ul class="space-y-3 text-slate-400 text-sm mb-8">
-        <li class="check">Single production node</li>
-        <li class="check">Compiled JAR artifact</li>
-        <li class="check">Email support (48hr SLA)</li>
-        <li class="check">1 year of version updates included</li>
-        <li class="check">Full acceptance test suite</li>
-        <li class="check">Self-hosted, no telemetry</li>
-      </ul>
-      <a href="mailto:sales@preciseledgerpro.com?subject=Starter%20License%20Inquiry" class="btn-outline w-full text-center block">Contact Sales</a>
-    </div>
-
-    <!-- Enterprise -->
-    <div class="pricing-card featured">
-      <div class="absolute -top-3 right-6">
-        <span class="badge bg-brand-500 text-white px-3 py-1 text-xs">MOST POPULAR</span>
-      </div>
-      <h3 class="mono text-brand-400 text-sm font-semibold mb-2">BUSINESS</h3>
-      <div class="flex items-baseline gap-1 mb-1">
-        <span class="text-4xl font-bold">$9,999</span>
-        <span class="text-slate-500 text-sm">perpetual</span>
-      </div>
-      <p class="text-slate-500 text-sm mb-6">+ $1,999 / year for support renewal</p>
-      <hr class="border-white/5 mb-6" />
-      <ul class="space-y-3 text-slate-400 text-sm mb-8">
-        <li class="check">Unlimited production nodes</li>
-        <li class="check"><strong class="text-white">Full source code</strong> for audit, compliance &amp; safe-keeping</li>
-        <li class="check">Priority support (8hr SLA)</li>
-        <li class="check">1 year of version updates included</li>
-        <li class="check">White-glove onboarding session</li>
-        <li class="check">Custom integration consulting hours available</li>
-      </ul>
-      <a href="mailto:sales@preciseledgerpro.com?subject=Business%20License%20Inquiry" class="btn-primary w-full text-center block">Contact Sales</a>
-    </div>
-  </div>
-</section>
 
 <!-- ============================================================ -->
 <!-- FAQ -->
@@ -432,22 +374,12 @@ ledgerService.<span class="text-brand-400">applyLedgerActivity</span>(
   <div class="space-y-3">
 
     <div class="card overflow-hidden">
-      <button @click="open = open === 1 ? null : 1" class="w-full text-left px-6 py-4 flex items-center justify-between">
-        <span class="font-medium">What does "perpetual license" mean?</span>
-        <span class="text-brand-400 transition-transform" :class="open===1 && 'rotate-45'">+</span>
-      </button>
-      <div x-show="open===1" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
-        You pay once and can use the SDK in production forever. There is no subscription required to keep running. The optional annual support renewal gives you access to new versions, security patches, and priority email support.
-      </div>
-    </div>
-
-    <div class="card overflow-hidden">
       <button @click="open = open === 2 ? null : 2" class="w-full text-left px-6 py-4 flex items-center justify-between">
         <span class="font-medium">Do I get the source code?</span>
         <span class="text-brand-400 transition-transform" :class="open===2 && 'rotate-45'">+</span>
       </button>
       <div x-show="open===2" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
-        The Business plan includes full source code access. This is essential for financial institutions that need to audit third-party code, maintain escrow copies, or make customisations. The Starter plan ships as a compiled JAR with full Javadoc and the acceptance test suite.
+        Yes — the full source code is open source and available on GitHub. You can audit it, fork it, and deploy it freely.
       </div>
     </div>
 
@@ -457,7 +389,7 @@ ledgerService.<span class="text-brand-400">applyLedgerActivity</span>(
         <span class="text-brand-400 transition-transform" :class="open===6 && 'rotate-45'">+</span>
       </button>
       <div x-show="open===6" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
-        Yes. The same rollback-replay-sync algorithm is independently implemented in pure Haskell (GHC 9.6.4) with 64 verified invariants. The Haskell port ships as a Cabal library (<code class="mono text-brand-400">precise-ledger</code>) and is included in the Business plan source bundle. It serves as both a formal cross-language verification of the algorithm and a production-ready option for Haskell-native teams.
+        Yes. The same rollback-replay-sync algorithm is independently implemented in pure Haskell (GHC 9.6.4) with 64 verified invariants. The Haskell port ships as a Cabal library (<code class="mono text-brand-400">precise-ledger</code>) and is available in the open-source repository. It serves as both a formal cross-language verification of the algorithm and a production-ready option for Haskell-native teams.
       </div>
     </div>
 
@@ -481,16 +413,30 @@ ledgerService.<span class="text-brand-400">applyLedgerActivity</span>(
       </div>
     </div>
 
-    <div class="card overflow-hidden">
-      <button @click="open = open === 5 ? null : 5" class="w-full text-left px-6 py-4 flex items-center justify-between">
-        <span class="font-medium">What happens if I don't renew support?</span>
-        <span class="text-brand-400 transition-transform" :class="open===5 && 'rotate-45'">+</span>
-      </button>
-      <div x-show="open===5" x-collapse class="px-6 pb-5 text-slate-400 text-sm leading-relaxed">
-        Your software continues working — it's a perpetual license. You keep the last version you received. You just won't receive future updates, security patches, or priority support until you renew.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- WHITE PAPER CALLOUT -->
+<!-- ============================================================ -->
+<section class="max-w-6xl mx-auto px-6 py-16">
+  <div class="card p-8 md:p-10" style="background:linear-gradient(135deg,rgba(129,140,248,0.06) 0%,rgba(56,189,248,0.04) 100%); border-color: rgba(129,140,248,0.2);">
+    <div class="flex flex-col md:flex-row md:items-center gap-8">
+      <div class="flex-1">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="badge bg-purple-500/20 text-purple-300 border border-purple-500/25">White Paper</span>
+          <span class="badge bg-slate-700/60 text-slate-400 border border-white/10">Position Paper &middot; April 2026</span>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Getting Retroactive Corrections Right</h3>
+        <p class="text-slate-400 text-sm leading-relaxed max-w-xl">
+          A structured position paper for engineering leads, compliance officers, and decision-makers. Covers why conventional ledger approaches fail on reversals and backdated entries, the four correctness requirements every regulated ledger must meet, who should use PLP, and a side-by-side competitive landscape analysis.
+        </p>
+      </div>
+      <div class="shrink-0 flex flex-col sm:flex-row md:flex-col gap-3">
+        <a href="whitepaper.html" class="btn-primary text-center" style="background:linear-gradient(135deg,#7c3aed,#6366f1);">Read White Paper</a>
+        <a href="https://github.com/v1bh0r/precise-ledger-pro" class="btn-outline text-center text-sm">View Source &rarr;</a>
       </div>
     </div>
-
   </div>
 </section>
 
@@ -499,10 +445,10 @@ ledgerService.<span class="text-brand-400">applyLedgerActivity</span>(
 <!-- ============================================================ -->
 <section class="border-t border-b border-white/5 py-20 px-6 text-center" style="background: linear-gradient(180deg, rgba(14,165,233,0.04) 0%, transparent 100%);">
   <h2 class="text-3xl md:text-4xl font-bold mb-4">Ready to ship a correct ledger?</h2>
-  <p class="text-slate-400 mb-10 max-w-lg mx-auto">See the rollback-replay-sync engine handle reversals and backdated payments in real time, then talk to us about licensing.</p>
+  <p class="text-slate-400 mb-10 max-w-lg mx-auto">See the rollback-replay-sync engine handle reversals and backdated payments in real time, then get in touch.</p>
   <div class="flex flex-col sm:flex-row gap-4 justify-center">
     <a href="demo.html" class="btn-primary">View Live Demo</a>
-    <a href="mailto:sales@preciseledgerpro.com?subject=License%20Inquiry" class="btn-outline">Contact Sales</a>
+    <a href="mailto:contact@preciseledge.pro" class="btn-outline">Contact Us</a>
   </div>
 </section>
 
