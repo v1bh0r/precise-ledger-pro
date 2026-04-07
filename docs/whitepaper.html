@@ -271,8 +271,8 @@
     </p>
     <ul class="list-none space-y-2 pl-0">
       <li class="check">Real-time payment rails deliver settlement confirmations hours or days after contractual effective dates, creating systematic backdating.</li>
-      <li class="check">Buy-now-pay-later and embedded lending products run high-volume, short-tenor loans where reversal rates can reach 5–10% of all transactions.</li>
-      <li class="check">Regulatory change — including CFPB supervision of non-bank servicers — is tightening requirements around audit traceability, specifically requiring that every balance entry be explainable by reference to a documented source activity.</li>
+      <li class="check">Buy-now-pay-later and embedded lending products run high-volume, short-tenor loans where elevated reversal rates are a recognised operational characteristic of the sector.</li>
+      <li class="check">Regulatory scrutiny of non-bank servicers — including through CFPB examination frameworks — has increased focus on audit traceability and the demonstrable ability to reconstruct how balances were derived.</li>
       <li class="check">Event-sourced architectures in microservices environments create at-least-once delivery semantics that produce legitimate duplicate events, requiring idempotent ledger application.</li>
     </ul>
 
@@ -300,7 +300,7 @@
           <span class="mono text-amber-400 font-bold text-sm shrink-0 pt-0.5">R2</span>
           <div>
             <p class="font-semibold text-slate-200 mb-1">Audit Immutability</p>
-            <p class="text-slate-400 text-sm leading-relaxed">Original ledger entries must not be modified or deleted once persisted. This is a hard regulatory requirement in most jurisdictions for financial records, and a prerequisite for forensic reconstructability.</p>
+            <p class="text-slate-400 text-sm leading-relaxed">Original ledger entries must not be modified or deleted once persisted. Immutability of financial records is a widely-held expectation in regulatory examination across many jurisdictions, and is a prerequisite for forensic reconstructability. Teams should verify the specific record-keeping obligations that apply to their own regulatory context.</p>
           </div>
         </div>
       </div>
@@ -335,7 +335,7 @@
 
     <h3>3.1 Full Ledger Reconstruction</h3>
     <p>
-      When a retroactive event arrives, discard the current derived ledger and rebuild it from scratch from the original activity log. This approach satisfies all four requirements (R1–R4) but is computationally expensive: for a ledger with thousands of entries and a retroactive event at position <em>k</em>, the cost is proportional to all entries from <em>k</em> onward that must be recomputed and persisted. For a 10-year-seasoned loan with daily interest accruals, that is 3,650+ entries per retroactive event. Under high retroactive event volume — common in late-arriving payment file batches — this becomes a throughput bottleneck. Operationally, many teams abandon this approach as portfolios grow and instead accept one of the weaker consistency guarantees below.
+      When a retroactive event arrives, discard the current derived ledger and rebuild it from scratch from the original activity log. This approach satisfies all four requirements (R1–R4) but is computationally expensive: for a ledger with thousands of entries and a retroactive event at position <em>k</em>, the cost is proportional to all entries from <em>k</em> onward that must be recomputed and persisted. For a 10-year-seasoned loan with daily interest accruals, that is 3,650+ entries per retroactive event. Under high retroactive event volume — common in late-arriving payment file batches — this becomes a throughput bottleneck.
     </p>
 
     <h3>3.2 Append-Only Compensation (Naive)</h3>
@@ -440,19 +440,19 @@
       <div class="audience-card">
         <div class="text-2xl mb-3">🛠️</div>
         <h3 class="font-semibold text-slate-200 mb-2 text-base">Loan Management Software Vendors<br/><span class="text-slate-500 text-xs font-normal">LMS · Core Banking · Servicing Platforms</span></h3>
-        <p class="text-slate-400 text-sm leading-relaxed">Teams building general-purpose servicing platforms for multiple lenders must handle every combination of retroactive scenario their clients will encounter. PLP provides a correct-by-construction algorithmic foundation — with a formal academic treatment — that can underpin a vendor's own servicing engine.</p>
+        <p class="text-slate-400 text-sm leading-relaxed">Teams building general-purpose servicing platforms for multiple lenders must handle every combination of retroactive scenario their clients will encounter. PLP provides a correct-by-construction algorithmic foundation — with the algorithm and evaluation documented in an accompanying working paper — that can underpin a vendor's own servicing engine.</p>
       </div>
 
       <div class="audience-card">
         <div class="text-2xl mb-3">🏛️</div>
         <h3 class="font-semibold text-slate-200 mb-2 text-base">Compliance &amp; Audit Teams<br/><span class="text-slate-500 text-xs font-normal">Internal Audit · Regulatory Technology · Model Risk</span></h3>
-        <p class="text-slate-400 text-sm leading-relaxed">Regulatory examiners — particularly under CFPB, OCC, and FCA frameworks — increasingly require that every ledger balance change be traceable to a documented source activity. PLP's entry-level traceability (R3) directly satisfies this requirement, and its open-source implementation is auditable by any third party.</p>
+        <p class="text-slate-400 text-sm leading-relaxed">Regulatory examiners under CFPB, OCC, and FCA frameworks place significant weight on a lender's ability to explain how balances were derived and to reconstruct ledger history. PLP's entry-level traceability (R3) directly supports that kind of demonstrability, and its open-source implementation is auditable by any third party. Teams should confirm which traceability obligations apply in their own regulatory context.</p>
       </div>
 
       <div class="audience-card">
         <div class="text-2xl mb-3">🔬</div>
         <h3 class="font-semibold text-slate-200 mb-2 text-base">Financial Systems Researchers<br/><span class="text-slate-500 text-xs font-normal">Academic Institutions · Model Verification Labs</span></h3>
-        <p class="text-slate-400 text-sm leading-relaxed">The Haskell reference implementation and associated academic draft provide a formal specification of the fork-and-sync algorithm. Researchers studying bitemporal consistency, compensating transaction semantics, or financial data correctness will find both a theoretical framework and a reference implementation in two independent type systems.</p>
+        <p class="text-slate-400 text-sm leading-relaxed">The Haskell reference implementation and an accompanying working paper document the fork-and-sync algorithm in formal terms. Researchers studying bitemporal consistency, compensating transaction semantics, or financial data correctness will find both a technical write-up and a reference implementation in two independent type systems. The working paper is an unpublished draft and has not yet been submitted for peer review.</p>
       </div>
 
       <div class="audience-card">
@@ -481,7 +481,7 @@
     <p>
       Enterprise LMS platforms handle retroactive events through proprietary mechanisms that are not publicly documented. Their algorithms for backdating and reversal propagation are typically not auditable by the lender, and their audit-trail properties cannot be independently verified. While these platforms are fully featured for loan lifecycle management, they represent a vendor-lock-in risk for teams that require transparency into the correction algorithm, and their licensing costs are substantial for smaller lenders or fintech platforms at scale.
     </p>
-    <p><strong>Where PLP differs:</strong> Open-source, auditable implementation. Full source code. Self-hosted. Academic treatment published.</p>
+    <p><strong>Where PLP differs:</strong> Open-source, auditable implementation. Full source code. Self-hosted. Algorithm design documented in an accompanying working paper available with the repository.</p>
 
     <h3>5.2 Core Banking Systems (e.g., Temenos, FIS, Finastra)</h3>
     <p>
@@ -503,9 +503,9 @@
 
     <h3>5.5 In-House Custom Implementations</h3>
     <p>
-      The most common "competitor" is custom code written by the engineering team. In-house retroactive correction logic is almost universally one of the following: a naive negation entry (violates R1), a full-rebuild trigger (correct but slow), or a grouped adjustment (violates R3–R4). Teams discover the edge cases — nested reversals, backdated events on already-reversed ledgers, idempotency failures during retry storms — at the worst possible time: in production, under exam, or during a reconciliation failure.
+      The most common "competitor" is custom code written by the engineering team. In-house retroactive correction logic commonly takes one of the following forms: a naive negation entry (violates R1), a full-rebuild trigger (correct but slow), or a grouped adjustment (violates R3–R4). Teams discover the edge cases — nested reversals, backdated events on already-reversed ledgers, idempotency failures during retry storms — at the worst possible time: in production, under exam, or during a reconciliation failure.
     </p>
-    <p><strong>Where PLP differs:</strong> 117 combined test invariants (53 Java + 64 Haskell) covering the full matrix of retroactive scenarios, independently verified in two type systems. Developing equivalent coverage in-house requires months of specialist engineering time and is rarely funded before production incidents occur.</p>
+    <p><strong>Where PLP differs:</strong> 117 combined test invariants (53 Java + 64 Haskell) covering the full matrix of retroactive scenarios, independently verified in two type systems. The open-source test suite documents every covered scenario and can be reviewed directly at the repository.</p>
 
     <!-- Full comparison table -->
     <div class="card p-6 mt-8 overflow-x-auto">
@@ -614,7 +614,7 @@
 
     <h3>6.2 Cross-Language Correctness Verification</h3>
     <p>
-      The algorithm is independently implemented in <strong>Java 21</strong> (53 verified invariants, Quarkus/Spring compatible) and <strong>pure Haskell</strong> (GHC 9.6.4, 64 verified invariants). The identical test outcomes across two independent type systems — an imperative object-oriented implementation and a strongly typed pure functional implementation — serve as a cross-language proof that the algorithm is correct by construction, not by accident of a particular runtime or framework.
+      The algorithm is independently implemented in <strong>Java 21</strong> (53 verified invariants, Quarkus/Spring compatible) and <strong>pure Haskell</strong> (GHC 9.6.4, 64 verified invariants). The identical test outcomes across two independent type systems — an imperative object-oriented implementation and a strongly typed pure functional implementation — provide strong cross-language evidence that the algorithm behaves correctly and consistently, not by accident of a particular runtime or framework. These results demonstrate correctness for the covered scenarios; they are not a formal mathematical proof.
     </p>
 
     <h3>6.3 Precision Architecture</h3>
@@ -643,7 +643,7 @@
       </div>
       <div class="card p-5">
         <p class="text-amber-400 font-semibold mono text-sm mb-2">Regulatory Cost</p>
-        <p class="text-slate-400 text-xs leading-relaxed">Regulatory examiners are increasingly requesting that lenders demonstrate the correctness of their balance calculation algorithms. An in-house implementation requires internal model validation documentation. PLP provides a publicly available academic treatment and cross-language verification as an external reference.</p>
+        <p class="text-slate-400 text-xs leading-relaxed">Regulatory examiners are increasingly requesting that lenders demonstrate the correctness of their balance calculation algorithms. An in-house implementation requires internal model validation documentation. PLP provides a working paper and cross-language verification that can serve as a technical reference — though the paper is an unpublished draft and has not been independently peer-reviewed.</p>
       </div>
     </div>
 
@@ -672,7 +672,7 @@
       <p class="text-green-400 font-semibold text-sm mb-3">Recommended Next Steps</p>
       <ul class="list-none space-y-2 pl-0">
         <li class="check text-slate-300 text-sm"><strong>Run the live demo</strong> — process the nine-activity canonical scenario and compare PLP output against the conventional grouped-adjustment ledger, entry by entry.</li>
-        <li class="check text-slate-300 text-sm"><strong>Review the academic draft</strong> — the algorithms, data structures, formal requirements, and comparative evaluation are documented at the arxiv-preprint level for technical and compliance review.</li>
+        <li class="check text-slate-300 text-sm"><strong>Review the working paper</strong> — the algorithms, data structures, formal requirements, and comparative evaluation are documented in an unpublished technical paper included in the repository. It has not been submitted for peer review and should be treated accordingly.</li>
         <li class="check text-slate-300 text-sm"><strong>Audit the implementation</strong> — the full Java and Haskell source is available on GitHub under an open-source license.</li>
         <li class="check text-slate-300 text-sm"><strong>Identify your retroactive event volume</strong> — assess your current reversal rate and backdated payment frequency; teams with >0.5% retroactive event ratios will see the most immediate correctness benefit.</li>
         <li class="check text-slate-300 text-sm"><strong>Contact the team</strong> — for implementation guidance, integration support, or model validation documentation for regulatory purposes.</li>
@@ -688,7 +688,7 @@
       <p>Fowler, M. (2005). <em>Event Sourcing</em>. martinfowler.com.</p>
       <p>Garcia-Molina, H., &amp; Salem, K. (1987). Sagas. <em>ACM SIGMOD Record</em>, 16(3), 249–259.</p>
       <p>Jensen, C. S., Clifford, J., Elmasri, R., Gadia, S. K., Hayes, P., &amp; Jajodia, S. (1994). A consensus glossary of temporal database concepts. <em>ACM SIGMOD Record</em>, 23(1), 52–64.</p>
-      <p>Mahajan, V., &amp; Bedi, R. (2025). Retroactive Reconciliation in Financial Ledgers: A Fork-and-Sync Architecture for Out-of-Order Activities and Reversals with Per-Entry Traced Corrections. <em>arXiv preprint</em> (cs.DB).</p>
+      <p>Mahajan, V., &amp; Bedi, R. (2025). Retroactive Reconciliation in Financial Ledgers: A Fork-and-Sync Architecture for Out-of-Order Activities and Reversals with Per-Entry Traced Corrections. <em>Unpublished working paper.</em> Available at <a href="https://github.com/v1bh0r/precise-ledger-pro" class="text-brand-400 hover:underline">github.com/v1bh0r/precise-ledger-pro</a>. Not submitted for peer review.</p>
       <p>Meijer, E., &amp; Fokkinga, M. (1991). Functional programming with bananas, lenses, envelopes and barbed wire. <em>FPCA '91</em>, LNCS 523.</p>
       <p>Snodgrass, R. T. (1999). <em>Developing Time-Oriented Database Applications in SQL</em>. Morgan Kaufmann.</p>
     </div>
@@ -698,7 +698,7 @@
     <!-- -------------------------------------------------- -->
     <div class="mt-10 pt-6 border-t border-white/5">
       <p class="footnote">
-        This white paper is published by Precise Ledger Pro and has not been subject to independent third-party review. It represents the organization's position on financial ledger correctness methodology. The evaluation scenario in Section 5 and Section 7 of the reference implementation paper is reproduced here with full methodology transparency. All balance figures are computed by the publicly available reference implementation. This document does not constitute legal, regulatory, or financial advice.
+        This white paper is published by Precise Ledger Pro and has not been subject to independent third-party review. It represents the organization's position on financial ledger correctness methodology. The nine-activity evaluation scenario described in Sections 1 and 3 is documented in the accompanying working paper and is fully reproducible via the publicly available reference implementation. That paper is an unpublished draft and has not been submitted for external peer review. Industry observations cited without an explicit source represent the authors' operational experience and should not be treated as independently verified data. All balance figures cited are computed by the reference implementation. This document does not constitute legal, regulatory, or financial advice.
       </p>
     </div>
 
