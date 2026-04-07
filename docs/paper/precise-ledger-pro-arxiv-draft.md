@@ -118,19 +118,7 @@ Idempotency in distributed systems is well-studied [Bernstein and Goodman 1981].
 - `calculateTotalImpact(activityType, activityId)` — returns the sum of all balance changes across all entries attributed to a given source activity.
 - `getCurrentBalance()` — returns the running multi-component balance.
 
-**LedgerEntry.** An immutable record containing:
-
-| Field | Description |
-|---|---|
-| `entryType` | Semantic classification: Disbursal, Payment, StartOfDay, Reversal, Adjustment |
-| `principal`, `interest`, `fee`, `excess` | Incremental balance changes per component |
-| `principalBalance`, `interestBalance`, … | Running balances after this entry |
-| `effectiveAt` | Business-effective timestamp |
-| `createdAt` | Processing-time timestamp |
-| `sourceLedgerActivityType` | Type of the originating activity |
-| `sourceLedgerActivityId` | ID of the originating activity |
-
-The composite idempotency key is a deterministic hash of (`loanId`, `entryId`, `entryType`, `sourceLedgerActivityType`, `sourceLedgerActivityId`, `effectiveAt`).
+**LedgerEntry.** An immutable record that captures an incremental balance change across the four components (principal, interest, fee, excess), running balances after the entry, the business-effective timestamp (`effectiveAt`), the processing-time timestamp (`createdAt`), and a source-activity identifier pair (`sourceLedgerActivityType`, `sourceLedgerActivityId`) that permanently links the entry to the ledger activity that created it. A composite idempotency key — a deterministic hash over the loan identifier, entry identifier, entry type, source-activity pair, and effective date — prevents duplicate entry insertion during recursive replay cycles. The complete field specification is given in Appendix C, Table C1.
 
 **Balance.** A 4-tuple (*P*, *I*, *F*, *E*) supporting component-wise addition, subtraction, negation, and total-amount computation.
 
@@ -190,111 +178,23 @@ Figure 1 illustrates runtime component interaction. The `LedgerService` orchestr
 
 ### 5.1 Algorithm 1: Retroactive Fork-and-Sync for Backdated Activities
 
-**Precondition:** A ledger activity *a* arrives with *a*.effectiveAt < ledger.latestEntry.effectiveAt.
+When a backdated activity *a* arrives, the algorithm forks the primary ledger at the point immediately before *a*'s effective date, applies *a* to the fork, and replays all subsequent activities from the activity log against the fork. The completed fork is then reconciled back into the primary ledger via Algorithm 3. The invariant guaranteed on completion is that every entry after the insertion point carries a running balance consistent with the corrected history, with each downstream correction attributed to its originating source activity.
 
-**Postcondition:** The primary ledger contains the correct running balances for all entries following the insertion point, with each downstream correction attributed to its source activity.
-
-```
-Algorithm RETROACTIVE-FORK-SYNC(ledger, a, clock, ctx):
-  1. fork ← ledger.rollbackToEntryBefore(a.effectiveAt)
-  2. forkIndex ← |fork.entries|
-  3. a.applyTo(fork, clock, ctx)
-  4. For each new entry e in fork[forkIndex..end]:
-       ledger.addEntry(e)               // mirror direct entries
-  5. replayActivities ← getLedgerActivities(
-         loanId       = ledger.loanId,
-         effectiveAt  ≥ a.effectiveAt,
-         createdAt    ≤ clock.now)
-       sorted by effectiveAt ascending
-  6. APPLY-LEDGER-ACTIVITIES(fork, replayActivities, clock, ctx)
-  7. SYNC(ledger, fork, clock.now, a.createdAt, forkIndex)
-```
-
-**Note on recursion.** Step 6 may itself encounter a backdated activity relative to *fork*, triggering a nested invocation of Algorithm 1. Idempotency keys at Step 4 and within `addEntry` ensure that entries generated across recursion depths are not duplicated.
-
-**Complexity.** Let *m* be the number of entries following the insertion point in the primary ledger and *k* the number of replay activities. The fork copy is O(*k*) for the preserved prefix. Replay processes *k* activities, each O(1) for direct entries; temporal activities with waterfall spread are O(*c*) where *c* is the number of balance components (constant in practice, *c* = 4). Reconciliation is O(*k*) with one pass per distinct source activity. Total complexity per backdated event: O(*m* + *k* log *k*) dominated by the sort at Step 5.
+Recursion is safe because a backdated activity encountered during the replay of a fork triggers a nested invocation of the same protocol, and the composite idempotency key on each entry prevents duplication regardless of recursion depth. The dominant cost per event is O(*m* + *k* log *k*), where *m* is the number of post-fork entries in the primary ledger and *k* is the number of replay activities; the log factor arises from sorting replay activities by effective date. The formal step-by-step specification is given in Appendix C, Algorithm C1.
 
 ### 5.2 Algorithm 2: Compensation + Retroactive Fork-and-Sync for Reversals
 
-**Precondition:** A reversal activity *r* identifies a target activity *t* to be reversed. All entries attributed to *t* exist in the primary ledger.
+A reversal does more than negate the direct balance impact of the target activity — it also invalidates every downstream derived value (interest accruals, allocation waterfall results) that was computed using the balance state the reversed activity created. Algorithm 2 handles both concerns in sequence.
 
-**Postcondition:** The primary ledger contains a compensation entry immediately negating *t*'s impact, plus individually traced adjustments for all downstream derived effects, with no record of *t*'s existence removed from the ledger.
-
-```
-Algorithm REVERSAL-FORK-SYNC(ledger, r, clock, ctx):
-  1. totalImpact ← ledger.calculateTotalImpact(r.targetType, r.targetId)
-  2. compensation ← buildEntry(
-         change  = -totalImpact,
-         balance = ledger.currentBalance - totalImpact,
-         type    = "Reversal",
-         source  = (r.targetType, r.targetId),
-         effectiveAt = r.effectiveAt, createdAt = clock.now)
-  3. ledger.addEntry(compensation)
-  4. fork ← ledger.rollbackToEntryBefore(r.targetType, r.targetId)
-  5. forkIndex ← |fork.entries|
-  6. replayActivities ← getLedgerActivities(
-         loanId     = ledger.loanId,
-         createdAt  > originalActivity(r.targetId).createdAt,
-         createdAt  ≤ clock.now)
-       excluding r.targetId
-       sorted by effectiveAt ascending
-  7. APPLY-LEDGER-ACTIVITIES(fork, replayActivities, clock, ctx)
-  8. SYNC(ledger, fork, clock.now, r.createdAt, forkIndex)
-```
-
-**Exclusion invariant.** The reversed target activity is excluded from replay at Step 6. This prevents infinite recursion and ensures the fork represents the world "as if the reversed activity never happened."
-
-**Compensation semantics.** The compensation entry at Step 3 immediately corrects the primary ledger's current balance without waiting for reconciliation. This is essential for balance queries that may occur between the compensation step and the completion of replay.
+First, a compensation entry that exactly negates the total recorded impact of the reversed activity is appended to the primary ledger immediately. This ensures that any balance query issued between the compensation step and the completion of downstream reconciliation observes a correct current balance. Second, the primary ledger is forked at the point immediately before the reversed activity's entries, and all subsequent activities — excluding the reversed target — are replayed on the fork. The exclusion of the reversed activity is the critical termination invariant: it ensures the fork represents the ledger *as if the reversed activity never happened*, and prevents infinite recursion in the replay loop. The fork is then reconciled into the primary ledger via Algorithm 3. The formal step-by-step specification is given in Appendix C, Algorithm C2.
 
 ### 5.3 Algorithm 3: Differential Impact Reconciliation (SYNC)
 
-This sub-routine is shared by Algorithms 1 and 2. It reconciles per-activity impacts between the retroactive fork and the primary ledger, generating one adjustment entry per divergent source activity with zero entries for activities whose balance impact did not change.
+SYNC is the shared sub-routine invoked at the conclusion of both Algorithm 1 and Algorithm 2. It walks the post-fork entries of the retroactive fork and, for each distinct source activity key, compares the total balance impact recorded in the fork against the total balance impact recorded in the primary ledger. If the impacts differ, a single adjustment entry carrying the delta is appended to the primary ledger, attributed to the source activity that produced the divergence. If the impacts are identical — the zero-delta case — no entry is emitted. Activities with no prior record in the primary ledger (net-new activities introduced by the fork) are added directly.
 
-```
-Algorithm SYNC(primary, fork, now, adjustmentEffectiveAt, forkIndex):
-  1. forkEntries ← fork.entries sorted by effectiveAt
-  2. primaryEntries ← primary.entries sorted by effectiveAt
-  3. If forkEntries is empty or primaryEntries is empty: return
-  4. processed ← {}
-  5. For i from forkIndex to |forkEntries| - 1:
-     a. retro ← forkEntries[i]
-     b. key ← (retro.sourceLedgerActivityType, retro.sourceLedgerActivityId)
-     c. If key ∈ processed: continue
-     d. primaryImpact ← primary.calculateTotalImpact(key.type, key.id)
-     e. If primaryImpact = NULL:
-          primary.addEntry(retro)          // net-new activity
-        Else:
-          retroImpact ← fork.calculateTotalImpact(key.type, key.id)
-          If retroImpact ≠ primaryImpact:
-            delta ← retroImpact - primaryImpact
-            adj ← buildAdjustmentEntry(
-                    change  = delta,
-                    balance = primary.currentBalance + delta,
-                    source  = key,
-                    effectiveAt = adjustmentEffectiveAt,
-                    createdAt   = now)
-            primary.addEntry(adj)
-     f. processed.add(key)
-```
+Three properties are guaranteed by construction: each source activity is processed exactly once per reconciliation round (a *processed* set records visited keys); every emitted adjustment entry carries full source-activity attribution (satisfying R3); and the algorithm is O(*m*) in the number of post-fork entries. The zero-delta suppression is the mechanism that keeps entry count growth bounded: only activities that genuinely re-allocated balances differently produce new rows. The formal step-by-step specification is given in Appendix C, Algorithm C3.
 
-**Key properties:**
-- Zero-delta activities produce no adjustment entry ("skip-if-equal" guarantee).
-- Each source activity is processed exactly once per reconciliation round (`processed` set).
-- Every adjustment entry carries full source-activity attribution, satisfying R3.
-- The algorithm is O(*m*) in the number of post-fork entries.
-
-### 5.4 Algorithm 4: Idempotent Entry Addition
-
-```
-Algorithm ADD-ENTRY(ledger, e):
-  1. e' ← clone(e)
-  2. e'.updateRunningBalances(ledger.currentBalance)
-  3. key ← idempotencyKey(e')
-  4. If any existing entry in ledger has the same key: return  // silent skip
-  5. ledger.entries.append(e')
-```
-
-The composite idempotency key is a deterministic function of (loanId, entryId, entryType, sourceLedgerActivityType, sourceLedgerActivityId, effectiveAt). This key is stable across invocations: revisiting the same activity during a nested retrospective cycle always produces the same key, preventing duplication without relying on sequence numbers.
+All entry insertion flows through a single `addEntry` primitive that clones the incoming entry, recomputes its running balances against the current ledger tail, derives a composite idempotency key, and silently discards the entry if a matching key already exists. The key — a deterministic hash of loan identifier, entry identifier, entry type, source-activity pair, and effective date — is stable across invocations: revisiting the same activity at any recursion depth always produces the same key, so duplication is structurally impossible without reliance on sequence numbers or external counters. The formal step-by-step specification is given in Appendix C, Algorithm C4.
 
 ---
 
@@ -403,11 +303,11 @@ The `LedgerClock` design is a form of test-seam injection [Feathers 2004] applie
 
 - **Concurrent retroactive events.** The current design assumes serial application of activities to a given ledger. Concurrent retroactive events targeting the same ledger require external serialization (e.g., optimistic locking on the ledger object) to prevent lost-update anomalies.
 - **Infinite recursion guard.** The reversal algorithm excludes the target activity from replay explicitly. Incorrect activity-ID matching or missing exclusion in a derived implementation would cause unbounded recursion. The system mitigates this via exhaustive fixture-based tests.
-- **Query performance.** `calculateTotalImpact` performs a linear scan over ledger entries filtered by source activity. For long ledgers, a secondary index on (loanId, sourceLedgerActivityType, sourceLedgerActivityId) is required to maintain O(log *n*) query cost.
+- **Query performance.** `calculateTotalImpact` performs a linear scan over ledger entries filtered by source activity. For long ledgers, a secondary index on (loanId, sourceLedgerActivityType, sourceLedgerActivityId) is required to maintain O(log *n*) query cost [9].
 
 ### 8.5 Future Work
 
-Future directions include: (i) a formal proof of convergence and correctness for recursively nested retroactive events; (ii) benchmarking on synthetic ledgers of 10,000–100,000 entries to validate the O(*m* + *k* log *k*) empirical cost model; (iii) extension to multi-party ledgers where a retroactive event on one party's ledger triggers cascading reconciliation to a counterparty ledger.
+Three directions remain open. First, a formal proof of convergence and correctness for recursively nested retroactive events would strengthen the theoretical foundation of the fork-and-sync protocol. Second, empirical benchmarking on synthetic ledgers of 10,000–100,000 entries is needed to validate the O(*m* + *k* log *k*) cost model in practice. Third, extension to multi-party ledgers — where a retroactive event on one party's ledger triggers cascading reconciliation to a counterparty ledger — would broaden the applicability of the approach to interbank settlement and syndicated loan contexts.
 
 ---
 
@@ -467,6 +367,134 @@ Each row encodes a full ledger entry expectation including entry type, source ac
 
 *ACM CCS 2012 format:*
 `Information systems~Transaction management; Information systems~Data streams; Software and its engineering~Software reliability`
+
+---
+
+## Appendix C: Algorithm and Data Structure Specification
+
+This appendix contains the formal specifications referenced in Sections 4 and 5. Readers interested in the conceptual rationale for each algorithm should consult the corresponding prose sections; this appendix is intended for lookup and implementation reference.
+
+### Table C1: LedgerEntry Field Specification
+
+| Field | Type | Description |
+|---|---|---|
+| `entryType` | Enum | Semantic classification: Disbursal, Payment, StartOfDay, Reversal, Adjustment |
+| `principal`, `interest`, `fee`, `excess` | Decimal | Incremental balance changes per component |
+| `principalBalance`, `interestBalance`, `feeBalance`, `excessBalance` | Decimal | Running balances after this entry |
+| `effectiveAt` | Timestamp | Business-effective date of the originating activity |
+| `createdAt` | Timestamp | System processing timestamp |
+| `sourceLedgerActivityType` | String | Type identifier of the originating activity |
+| `sourceLedgerActivityId` | String | Unique identifier of the originating activity |
+
+The composite idempotency key is a deterministic hash of (`loanId`, `entryId`, `entryType`, `sourceLedgerActivityType`, `sourceLedgerActivityId`, `effectiveAt`).
+
+---
+
+### Algorithm C1: Retroactive Fork-and-Sync for Backdated Activities
+
+**Precondition:** A ledger activity *a* arrives with *a*.effectiveAt < ledger.latestEntry.effectiveAt.
+
+**Postcondition:** The primary ledger contains the correct running balances for all entries following the insertion point, with each downstream correction attributed to its source activity.
+
+```text
+Algorithm RETROACTIVE-FORK-SYNC(ledger, a, clock, ctx):
+  1. fork ← ledger.rollbackToEntryBefore(a.effectiveAt)
+  2. forkIndex ← |fork.entries|
+  3. a.applyTo(fork, clock, ctx)
+  4. For each new entry e in fork[forkIndex..end]:
+       ledger.addEntry(e)               // mirror direct entries
+  5. replayActivities ← getLedgerActivities(
+         loanId       = ledger.loanId,
+         effectiveAt  ≥ a.effectiveAt,
+         createdAt    ≤ clock.now)
+       sorted by effectiveAt ascending
+  6. APPLY-LEDGER-ACTIVITIES(fork, replayActivities, clock, ctx)
+  7. SYNC(ledger, fork, clock.now, a.createdAt, forkIndex)
+```
+
+**Complexity.** Let *m* be the number of entries following the insertion point and *k* the number of replay activities. Total cost per backdated event: O(*m* + *k* log *k*), dominated by the sort at Step 5.
+
+---
+
+### Algorithm C2: Compensation + Retroactive Fork-and-Sync for Reversals
+
+**Precondition:** A reversal activity *r* identifies a target activity *t* to be reversed. All entries attributed to *t* exist in the primary ledger.
+
+**Postcondition:** The primary ledger contains a compensation entry immediately negating *t*'s impact, plus individually traced adjustments for all downstream derived effects, with no record of *t*'s existence removed from the ledger.
+
+```text
+Algorithm REVERSAL-FORK-SYNC(ledger, r, clock, ctx):
+  1. totalImpact ← ledger.calculateTotalImpact(r.targetType, r.targetId)
+  2. compensation ← buildEntry(
+         change  = -totalImpact,
+         balance = ledger.currentBalance - totalImpact,
+         type    = "Reversal",
+         source  = (r.targetType, r.targetId),
+         effectiveAt = r.effectiveAt, createdAt = clock.now)
+  3. ledger.addEntry(compensation)
+  4. fork ← ledger.rollbackToEntryBefore(r.targetType, r.targetId)
+  5. forkIndex ← |fork.entries|
+  6. replayActivities ← getLedgerActivities(
+         loanId     = ledger.loanId,
+         createdAt  > originalActivity(r.targetId).createdAt,
+         createdAt  ≤ clock.now)
+       excluding r.targetId
+       sorted by effectiveAt ascending
+  7. APPLY-LEDGER-ACTIVITIES(fork, replayActivities, clock, ctx)
+  8. SYNC(ledger, fork, clock.now, r.createdAt, forkIndex)
+```
+
+---
+
+### Algorithm C3: Differential Impact Reconciliation (SYNC)
+
+**Precondition:** `fork` is a retroactive fork of `primary`. `forkIndex` is the position in `fork.entries` from which new or replayed entries begin.
+
+**Postcondition:** For each source activity with a divergent impact between `fork` and `primary`, exactly one adjustment entry is appended to `primary`. Zero-impact-delta activities produce no entry.
+
+```text
+Algorithm SYNC(primary, fork, now, adjustmentEffectiveAt, forkIndex):
+  1. forkEntries ← fork.entries sorted by effectiveAt
+  2. primaryEntries ← primary.entries sorted by effectiveAt
+  3. If forkEntries is empty or primaryEntries is empty: return
+  4. processed ← {}
+  5. For i from forkIndex to |forkEntries| - 1:
+     a. retro ← forkEntries[i]
+     b. key ← (retro.sourceLedgerActivityType, retro.sourceLedgerActivityId)
+     c. If key ∈ processed: continue
+     d. primaryImpact ← primary.calculateTotalImpact(key.type, key.id)
+     e. If primaryImpact = NULL:
+          primary.addEntry(retro)          // net-new activity
+        Else:
+          retroImpact ← fork.calculateTotalImpact(key.type, key.id)
+          If retroImpact ≠ primaryImpact:
+            delta ← retroImpact - primaryImpact
+            adj ← buildAdjustmentEntry(
+                    change  = delta,
+                    balance = primary.currentBalance + delta,
+                    source  = key,
+                    effectiveAt = adjustmentEffectiveAt,
+                    createdAt   = now)
+            primary.addEntry(adj)
+     f. processed.add(key)
+```
+
+**Complexity:** O(*m*) in the number of post-fork entries.
+
+---
+
+### Algorithm C4: Idempotent Entry Addition
+
+```text
+Algorithm ADD-ENTRY(ledger, e):
+  1. e' ← clone(e)
+  2. e'.updateRunningBalances(ledger.currentBalance)
+  3. key ← idempotencyKey(e')
+  4. If any existing entry in ledger has the same key: return  // silent skip
+  5. ledger.entries.append(e')
+```
+
+The composite idempotency key is a deterministic function of (`loanId`, `entryId`, `entryType`, `sourceLedgerActivityType`, `sourceLedgerActivityId`, `effectiveAt`).
 
 ---
 
