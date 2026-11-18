@@ -1,7 +1,7 @@
 module Ledger.ServiceSpec (spec) where
 
 import Test.Hspec
-import Data.Time (fromGregorian, midnight)
+import Data.Time (fromGregorian, midnight, TimeOfDay (..))
 
 import Ledger.Types
 import Ledger.Balance   (totalAmount)
@@ -181,6 +181,41 @@ spec = describe "Ledger.Service" $ do
   ---------------------------------------------------------------------------
   -- reverseLedgerActivity
   ---------------------------------------------------------------------------
+  ---------------------------------------------------------------------------
+  -- Known failures: retroactive reconciliation. These tests fail on the
+  -- current code. Each compares the arrival-order result with what processing
+  -- the same activities in business order gives (no backdated or reversal
+  -- path needed).
+  ---------------------------------------------------------------------------
+  describe "applyLedgerActivities — retroactive reconciliation (known failures)" $ do
+    let arrivedAt h = LocalTime (fromGregorian 2024 4 1) (TimeOfDay h 0 0)
+        -- Answers the replay queries with the Java repository's bounds:
+        -- effective-on-or-after uses transactionTime < now; created-since
+        -- uses transactionTime > target's and <= now.
+        lookupsFor acts = ActivityLookup
+          { lookupActivitiesAfter = \_ eff before ->
+              [x | x <- acts, laEffectiveAt x >= eff, laCreatedAt x < before]
+          , lookupActivitiesCreatedSince = \_ _ aId before ->
+              case [laCreatedAt x | x <- acts, laActivityId x == aId] of
+                (t : _) -> [x | x <- acts, laCreatedAt x > t, laCreatedAt x <= before]
+                []      -> []
+          }
+        disb i eff h = TransactionActivity loanId "Disbursal" "Transaction" i eff (arrivedAt h) 10 Credit "P"
+        rev i target eff h = ReversalActivityData loanId "Reversal" "Reversal" i eff (arrivedAt h) "Transaction" target
+
+    it "two reversals in a row reverse both disbursals, leaving nothing owed" $ do
+      let acts = [disb "a" t1 0, disb "b" t2 1, rev "r1" "b" t3 2, rev "r2" "a" t4 3]
+          (ledger, _) = applyLedgerActivities (lookupsFor acts) Nothing acts emptyLedger defaultClock
+      currentBalance ledger `shouldBe` zeroBalance
+
+    it "a backdated payment gives the same balance as processing in business order" $ do
+      -- Business order: a (t1), pay (t2) leaves 10 excess, b (t3) uses it,
+      -- d (t4) adds 10 principal: principal 10, excess 0.
+      let pay = TransactionActivity loanId "Payment" "Transaction" "c" t2 (arrivedAt 2) 20 Debit "FIP"
+          acts = [disb "a" t1 0, disb "b" t3 1, pay, disb "d" t4 3]
+          (ledger, _) = applyLedgerActivities (lookupsFor acts) Nothing acts emptyLedger defaultClock
+      currentBalance ledger `shouldBe` Balance 10 0 0 0
+
   describe "reverseLedgerActivity" $ do
 
     it "returns Left when reversed activity has no entries" $ do

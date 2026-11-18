@@ -1,0 +1,5 @@
+activityId,activityType,amount,principal,interest,fee,excess,principalBalance,interestBalance,feeBalance,excessBalance
+a,Transaction,10,10,0,0,0,10,0,0,0
+c,Transaction,20,-10,0,0,10,0,0,0,10
+b,Transaction,10,0,0,0,-10,0,0,0,0
+d,Transaction,10,10,0,0,0,10,0,0,0
